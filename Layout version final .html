@@ -1,0 +1,3791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Inventario - Multi-Producto por Ubicación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success-color: #059669;
+      --import-color: #0891b2;
+      --danger-color: #dc3545;
+      --warning-color: #d97706;
+      --bg-color: #eef1f6;
+      --card-bg: #ffffff;
+      --card-bg-alt: #f8f9fb;
+      --text-color: #1e2530;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --input-bg: #ffffff;
+      --shadow-color: rgba(15, 23, 42, 0.08);
+      --radius: 10px;
+      --font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+      --font-size-pantalla: 13px;
+      --font-size-impresion: 12px;
+    }
+    [data-theme="dark"] {
+      --primary-color: #3b82f6;
+      --primary-hover: #60a5fa;
+      --success-color: #10b981;
+      --import-color: #22d3ee;
+      --danger-color: #f87171;
+      --warning-color: #fbbf24;
+      --bg-color: #0e1420;
+      --card-bg: #1a2233;
+      --card-bg-alt: #212b3f;
+      --text-color: #e6ebf5;
+      --text-muted: #94a3b8;
+      --border-color: #303c54;
+      --input-bg: #212b3f;
+      --shadow-color: rgba(0, 0, 0, 0.45);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--font-family);
+      margin: 0;
+      padding: 20px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    h1, h2, h3, h4 { margin-top: 0; }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    /* Barra de Navegación por Botones (Pestañas) */
+    .nav-tabs-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 12px 15px;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 8px var(--shadow-color);
+      position: sticky;
+      top: 10px;
+      z-index: 100;
+      transition: background-color 0.2s ease;
+    }
+    .btn-tab {
+      background-color: var(--card-bg-alt);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-tab:hover {
+      background-color: var(--border-color);
+      color: var(--text-color);
+    }
+    .nav-spacer { flex-grow: 1; }
+    .btn-toggle-theme {
+      background: var(--card-bg-alt);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    .btn-toggle-theme:hover { background-color: var(--border-color); }
+    .btn-tab.active {
+      background-color: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+      box-shadow: 0 3px 6px rgba(0,123,255,0.3);
+    }
+    .selector-layouts {
+      display: flex;
+      gap: 4px;
+      background: var(--card-bg-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .btn-layout {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-layout:hover { color: var(--text-color); }
+    .btn-layout.active {
+      background-color: var(--primary-color);
+      color: white;
+      box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+    }
+
+    /* Botón hamburguesa: solo visible en móvil, fijo en pantalla */
+    .btn-menu-movil {
+      display: none;
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 210;
+      width: 46px;
+      height: 46px;
+      align-items: center;
+      justify-content: center;
+      background: var(--card-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 3px 10px var(--shadow-color);
+    }
+    /* Fondo oscuro detrás del menú deslizante en móvil */
+    .overlay-menu-movil {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 190;
+    }
+    .overlay-menu-movil.activo { display: block; }
+
+    /* Contenedor de Contenido de Pestañas */
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 8px var(--shadow-color);
+      transition: background-color 0.2s ease;
+    }
+    .panel h2 { font-weight: 800; letter-spacing: -0.01em; }
+
+    .form-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 15px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    input[type="text"], input[type="number"], select {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+    }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 1px;
+    }
+    input[type="color"] {
+      width: 50px;
+      height: 36px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 2px;
+    }
+    button {
+      padding: 9px 16px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background-color: var(--primary-color);
+      color: white;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button.btn-excel { background-color: var(--success-color); }
+    button.btn-import { background-color: var(--import-color); }
+    button.btn-secundario { background-color: #6c757d; }
+    button.btn-danger { background-color: #dc3545; padding: 4px 8px; font-size: 12px; }
+    button.btn-warning { background-color: #ffc107; color: #212529; padding: 4px 8px; font-size: 12px; }
+    
+    .table-container {
+      max-height: 350px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+      color: var(--text-color);
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    th {
+      background-color: var(--card-bg-alt);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      font-weight: 600;
+    }
+    tr:hover { background-color: var(--card-bg-alt); }
+    .color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    
+    .mapa-wrapper {
+      overflow: auto;
+      padding-bottom: 10px;
+      max-height: 75vh;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x pan-y;
+      will-change: scroll-position;
+      transform: translateZ(0);
+    }
+    .mapa-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 15px;
+      transform-origin: top left;
+      transition: transform 0.15s ease;
+      width: max-content;
+      will-change: transform;
+    }
+    /* Durante el pinch (pellizco) se quita la transición: si no, cada
+       frame del gesto pelea con la animación anterior y se siente
+       trabado. Los botones +/− sí conservan la transición suave. */
+    .mapa-grid.sin-transicion-zoom { transition: none; }
+
+    /* Contenedor relativo para poder flotar los controles sobre el mapa */
+    .mapa-container {
+      position: relative;
+    }
+
+    /* Panel flotante de controles del mapa: compacto y colapsado por
+       defecto para no tapar el mapa. Se abre con el botoncito de zoom
+       y se puede volver a cerrar tocando fuera de él. */
+    .mapa-controles-flotantes {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .btn-zoom-toggle {
+      background: var(--card-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      height: 36px;
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 3px 10px var(--shadow-color);
+      opacity: 0.6;
+      transition: opacity 0.2s ease;
+      cursor: pointer;
+    }
+    .btn-zoom-toggle:hover,
+    .btn-zoom-toggle:active,
+    .mapa-controles-flotantes.expandido .btn-zoom-toggle {
+      opacity: 1;
+    }
+    .cuerpo-controles-zoom {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      box-shadow: 0 4px 14px var(--shadow-color);
+      padding: 8px;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .mapa-controles-flotantes.expandido .cuerpo-controles-zoom { display: flex; }
+    .mapa-controles-flotantes .fila-zoom-principal {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mapa-controles-flotantes .fila-zoom-secundaria {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 6px;
+      width: 100%;
+      justify-content: center;
+    }
+    .mapa-controles-flotantes .btn-zoom {
+      background-color: var(--card-bg-alt);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      width: 32px;
+      height: 32px;
+      border-radius: 7px;
+      font-size: 16px;
+      font-weight: 800;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .mapa-controles-flotantes .btn-zoom:hover { background-color: var(--border-color); }
+    .mapa-controles-flotantes #lblZoomValor {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      min-width: 38px;
+      text-align: center;
+    }
+    .mapa-controles-flotantes .btn-accion-zoom {
+      background-color: var(--card-bg-alt);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      width: 32px;
+      height: 32px;
+      border-radius: 7px;
+      font-size: 14px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .mapa-controles-flotantes .btn-accion-zoom:hover { background-color: var(--border-color); }
+
+    /* Referencias visuales de Filas y Columnas */
+    .encabezado-columna, .encabezado-fila, .encabezado-esquina {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #6c757d;
+      font-size: 14px;
+      user-select: none;
+    }
+    .encabezado-columna {
+      border-bottom: 2px dashed #ced4da;
+      padding-bottom: 4px;
+    }
+    .encabezado-fila {
+      border-right: 2px dashed #ced4da;
+      padding-right: 4px;
+    }
+    .encabezado-esquina {
+      border-bottom: 2px dashed #ced4da;
+      border-right: 2px dashed #ced4da;
+    }
+
+    .celda {
+      padding: 8px;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+      transition: box-shadow 0.15s, filter 0.2s, border 0.2s;
+      min-height: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      position: relative;
+      font-size: var(--font-size-pantalla);
+      /* Evita que el navegador calcule/pinte celdas fuera de la vista visible:
+         acelera muchísimo el scroll del mapa cuando hay muchas ubicaciones. */
+      content-visibility: auto;
+      contain-intrinsic-size: 140px 100px;
+      contain: layout style paint;
+    }
+    /* El efecto de "levantar" la celda solo se aplica con mouse real.
+       En táctil, :hover se queda pegado tras tocar y genera repintados
+       constantes mientras se arrastra el mapa, sintiéndose lento. */
+    @media (hover: hover) and (pointer: fine) {
+      .celda {
+        transition: transform 0.15s, box-shadow 0.15s, filter 0.2s, border 0.2s;
+      }
+      .celda:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 12px rgba(0,0,0,0.25);
+      }
+    }
+
+    .celda.resaltado-busqueda {
+      border: 4px solid #ffeb3b !important;
+      transform: scale(1.05);
+      z-index: 5;
+      box-shadow: 0 0 20px rgba(255, 235, 59, 0.8) !important;
+      animation: latido 1.2s infinite alternate;
+    }
+    .celda.atenuado-busqueda {
+      opacity: 0.25;
+      filter: grayscale(70%);
+    }
+    @keyframes latido {
+      from { transform: scale(1.02); box-shadow: 0 0 10px rgba(255, 235, 59, 0.6); }
+      to { transform: scale(1.07); box-shadow: 0 0 25px rgba(255, 235, 59, 1); }
+    }
+
+    .celda.es-pasillo {
+      background-color: #343a40 !important;
+      background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 255, 255, 0.05) 10px,
+        rgba(255, 255, 255, 0.05) 20px
+      ) !important;
+      color: #e9ecef !important;
+      text-shadow: none !important;
+      border: 1px dashed #6c757d;
+    }
+    .celda.es-mixto {
+      background-color: #6f42c1 !important;
+      border: 2px solid #5a32a3;
+    }
+    .celda.es-vacio {
+      background-color: #28a745 !important;
+      border: 2px solid #1e7e34;
+    }
+
+    .celda .ubicacion { font-size: 1.2em; font-weight: 800; }
+    .celda .codigo-tag {
+      font-size: 0.9em;
+      background: rgba(0,0,0,0.3);
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin: 2px 0;
+    }
+    .celda .desc-tag {
+      font-size: 0.8em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 125px;
+      background: rgba(255,255,255,0.2);
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin: 2px 0;
+    }
+    .celda .info { font-size: 0.85em; font-weight: normal; }
+    .celda .badge-disponible {
+      background: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+      font-size: 0.85em;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .celda .badge-mixto {
+      background: #ffc107;
+      color: #212529;
+      font-size: 0.85em;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-top: 3px;
+      text-shadow: none;
+    }
+    .celda .mixto-codigos-lista {
+      font-size: 0.75em;
+      background: rgba(0,0,0,0.3);
+      padding: 2px 5px;
+      border-radius: 4px;
+      margin-top: 2px;
+      max-width: 125px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: var(--card-bg);
+      color: var(--text-color);
+      padding: 25px;
+      border-radius: var(--radius);
+      width: 500px;
+      max-width: 90vw;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      animation: aparecerModal 0.15s ease-out;
+    }
+    @keyframes aparecerModal {
+      from { opacity: 0; transform: translateY(8px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-body {
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    .modal hr { border-color: var(--border-color) !important; }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* Cajas informativas reutilizables (antes con estilos inline fijos) */
+    .info-box {
+      padding: 12px 18px;
+      border-radius: var(--radius);
+      border: 1px solid;
+      margin-bottom: 15px;
+    }
+    .info-box--green { background: #e2f0cb; border-color: #b5d56c; }
+
+    /* Sección desplegable genérica (usada en Lista de Códigos, etc.) */
+    .seccion-desplegable {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      background: var(--card-bg-alt);
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .seccion-desplegable > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 14px;
+      user-select: none;
+    }
+    .seccion-desplegable > summary::-webkit-details-marker { display: none; }
+    .seccion-desplegable > summary .flecha { transition: transform 0.2s ease; }
+    .seccion-desplegable[open] > summary .flecha { transform: rotate(90deg); }
+    .seccion-desplegable .seccion-desplegable-contenido {
+      padding: 0 16px 16px 16px;
+    }
+
+    /* Grupos de botones relacionados, con una mini-etiqueta arriba para
+       que la barra de acciones se vea ordenada en vez de un solo bloque. */
+    .grupo-botones {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .grupo-botones .etiqueta-grupo {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-muted);
+    }
+    .grupo-botones .botones-fila {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .barra-acciones-materiales {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 22px;
+      padding: 14px 16px;
+      margin-bottom: 15px;
+    }
+    .separador-vertical {
+      width: 1px;
+      background: var(--border-color);
+      align-self: stretch;
+    }
+    .info-box--blue { background: #e8f4fd; border-color: #bbe1fa; }
+    .info-box--gray { background: var(--card-bg-alt); border-color: var(--border-color); }
+    .info-box--indigo { background: #eef6ff; border-color: #b6d4fe; }
+    [data-theme="dark"] .info-box--green { background: #16281c; border-color: #2b4a35; }
+    [data-theme="dark"] .info-box--blue { background: #132234; border-color: #1f3a56; }
+    [data-theme="dark"] .info-box--indigo { background: #17233a; border-color: #253c5e; }
+
+    /* Notificaciones tipo toast (reemplazan alert()) */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 360px;
+    }
+    .toast {
+      background: var(--card-bg);
+      color: var(--text-color);
+      border-left: 5px solid var(--primary-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+      font-size: 13.5px;
+      line-height: 1.4;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      animation: entrarToast 0.2s ease-out;
+    }
+    .toast.exito { border-left-color: var(--success-color); }
+    .toast.error { border-left-color: var(--danger-color); }
+    .toast.aviso { border-left-color: var(--warning-color); }
+    .toast .toast-icono { font-size: 16px; line-height: 1; }
+    .toast .toast-cerrar {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 15px;
+      padding: 0 0 0 8px;
+    }
+    @keyframes entrarToast {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes salirToast {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(30px); }
+    }
+    .toast.saliendo { animation: salirToast 0.2s ease-in forwards; }
+
+    /* Modal de confirmación / contraseña genérico */
+    .modal-confirmacion { width: 380px; text-align: center; }
+    .modal-confirmacion .icono-confirmacion { font-size: 34px; margin-bottom: 8px; }
+    .modal-confirmacion p { font-size: 14px; color: var(--text-color); line-height: 1.5; }
+    .modal-confirmacion .modal-actions { justify-content: center; }
+
+    /* Selección múltiple de celdas */
+    .celda.celda-seleccionable { cursor: pointer; }
+    .celda.celda-seleccionada {
+      outline: 4px solid var(--primary-color) !important;
+      outline-offset: -2px;
+      transform: translateY(-2px) scale(1.02);
+    }
+    .celda.celda-seleccionada::after {
+      content: "✓";
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      background: var(--primary-color);
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .barra-seleccion {
+      display: none;
+      position: sticky;
+      top: 70px;
+      z-index: 90;
+      background: var(--primary-color);
+      color: white;
+      padding: 12px 18px;
+      border-radius: var(--radius);
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    }
+    .barra-seleccion.activa { display: flex; }
+    .barra-seleccion span { font-weight: 700; font-size: 14px; }
+    .barra-seleccion .acciones-seleccion { display: flex; gap: 8px; }
+    .btn-modo-seleccion.activo {
+      background-color: var(--primary-color) !important;
+      color: white !important;
+      border-color: var(--primary-color) !important;
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 10px; padding-top: 70px; }
+      .btn-menu-movil { display: flex; }
+      /* En móvil, la barra de pestañas se convierte en un menú deslizante
+         fijo: no ocupa espacio del contenido y no requiere subir para
+         cambiar de sección. */
+      .nav-tabs-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 260px;
+        max-width: 82vw;
+        flex-direction: column;
+        align-items: stretch;
+        border-radius: 0;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 200;
+      }
+      .nav-tabs-bar.abierto { transform: translateX(0); }
+      .nav-tabs-bar .nav-spacer { display: none; }
+      .nav-tabs-bar .selector-layouts { flex-direction: column; align-items: stretch; }
+      .nav-tabs-bar .btn-tab,
+      .nav-tabs-bar .btn-toggle-theme { width: 100%; justify-content: flex-start; }
+      .modal { width: 100%; }
+      .form-inline { gap: 8px; }
+      .celda { min-height: 80px; font-size: 12px; }
+    }
+
+    #printHeader { display: none; }
+
+    @media print {
+      @page { size: auto; margin: 10mm; }
+      body { 
+        background-color: white; 
+        padding: 0; 
+        display: flex; 
+        justify-content: center; 
+        align-items: flex-start; 
+      }
+      
+      .container {
+        width: 100% !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+      }
+
+      .panel { 
+        box-shadow: none !important; 
+        padding: 0 !important; 
+        border: none !important; 
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+      }
+
+      .mapa-wrapper { 
+        overflow: visible !important; 
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+      }
+
+      .mapa-grid {
+        transform: none !important;
+      }
+
+      .nav-tabs-bar, .tab-content, .no-print, .form-inline, button, input, select, .modal-overlay, #panelOcupacion, .btn-menu-movil, .overlay-menu-movil {
+        display: none !important;
+      }
+      
+      #printHeader {
+        display: block !important;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 8px;
+        width: 100%;
+        text-align: center;
+      }
+
+      .mapa-grid {
+        page-break-inside: auto;
+        margin: 0 auto !important;
+      }
+      .celda {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        color: #000000 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #333333 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        font-size: var(--font-size-impresion) !important;
+      }
+      .celda.es-pasillo {
+        background-color: #e9ecef !important;
+        background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;
+        border: 1px dashed #666 !important;
+      }
+      .celda.fuera-de-rango {
+        visibility: hidden !important;
+        border: none !important;
+        background: transparent !important;
+        display: none !important;
+      }
+      .celda .codigo-tag, .celda .desc-tag, .celda .badge-mixto, .celda .mixto-codigos-lista, .celda .badge-disponible {
+        background: #e9ecef !important;
+        color: #000000 !important;
+        border: 1px solid #ced4da;
+      }
+
+      .mapa-grid.print-normal { grid-template-columns: 35px repeat(var(--cols), 110px) !important; }
+      .mapa-grid.print-normal .celda { min-height: 90px !important; }
+
+      .mapa-grid.print-compacto { grid-template-columns: 30px repeat(var(--cols), 85px) !important; gap: 6px !important; }
+      .mapa-grid.print-compacto .celda { min-height: 70px !important; padding: 4px !important; }
+
+      .mapa-grid.print-mini { grid-template-columns: 25px repeat(var(--cols), 65px) !important; gap: 4px !important; }
+      .mapa-grid.print-mini .celda { min-height: 50px !important; padding: 2px !important; }
+
+      .mapa-grid.print-micro { grid-template-columns: 20px repeat(var(--cols), 44px) !important; gap: 2px !important; }
+      .mapa-grid.print-micro .celda { min-height: 36px !important; padding: 1px !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Botón hamburguesa (solo visible en móvil) para abrir el menú deslizante -->
+  <button class="btn-menu-movil no-print" id="btnMenuMovil" onclick="alternarMenuMovil()" aria-label="Abrir menú">☰</button>
+  <!-- Fondo oscuro que cierra el menú deslizante al tocarlo -->
+  <div class="overlay-menu-movil no-print" id="overlayMenuMovil" onclick="cerrarMenuMovil()"></div>
+
+  <div class="container">
+    
+    <!-- BARRA DE BOTONES DE NAVEGACIÓN SUPERIOR / MENÚ DESLIZANTE EN MÓVIL -->
+    <div class="nav-tabs-bar no-print" id="navTabsBar">
+      <button class="btn-tab active" onclick="cambiarPestaña('tab-mapa', this)">📍 Mapa Interactivo</button>
+      <button class="btn-tab" onclick="cambiarPestaña('tab-materiales', this)">🏷️ Materiales e Inventario</button>
+      <button class="btn-tab" onclick="cambiarPestaña('tab-backups', this)">💾 Backups</button>
+      <button class="btn-tab" onclick="cambiarPestaña('tab-historial', this)">📜 Historial</button>
+      <div class="nav-spacer"></div>
+      <div class="selector-layouts" title="Cada layout tiene su propio mapa, estructura y zonas. Los códigos e inventario son compartidos.">
+        <button class="btn-layout active" id="btnLayout1" onclick="cambiarLayout(1)">🏭 Layout 1</button>
+        <button class="btn-layout" id="btnLayout2" onclick="cambiarLayout(2)">🏭 Layout 2</button>
+      </div>
+      <button class="btn-toggle-theme" id="btnToggleTema" onclick="alternarTema()">🌙 Modo Oscuro</button>
+    </div>
+
+    <!-- PESTAÑA 1: MATERIALES E INVENTARIO -->
+    <div id="tab-materiales" class="tab-content">
+      <div class="panel">
+        <h2>🏷️ 1. Gestión de Códigos e Inventario Consolidado</h2>
+        <p style="font-size: 13px; color: #666;">Crea o edita códigos de productos o pasillos (Ej: Código: <strong>PASILLO-A</strong> | Descripción: <strong>Cartón / Empaque</strong>).</p>
+        <div class="form-inline">
+          <div class="form-group">
+            <label>Código / Identificador:</label>
+            <input type="text" id="nuevoCodigo" placeholder="Ej: COD-A1 o PASILLO-A">
+          </div>
+          <div class="form-group">
+            <label>Descripción / Clasificación (Opcional):</label>
+            <input type="text" id="nuevaDesc" placeholder="Ej: Electrónica o dejar en blanco">
+          </div>
+          <div class="form-group">
+            <label>Color:</label>
+            <input type="color" id="nuevoColor" value="#007bff">
+          </div>
+          <button id="btnCrearActualizar" onclick="guardarOActualizarCodigo()">➕ Crear Registro</button>
+        </div>
+
+        <details class="seccion-desplegable" open>
+          <summary><span>📋 Lista Consolidada de Materiales y Pasillos</span><span class="flecha">▶</span></summary>
+          <div class="seccion-desplegable-contenido">
+            <div class="form-group" style="margin: 10px 0;">
+              <label for="buscarCodigoMateriales">🔍 Buscar código o descripción:</label>
+              <input type="text" id="buscarCodigoMateriales" placeholder="Escribe para filtrar la lista..." oninput="renderizarListaCodigos()">
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código / Pasillo</th>
+                    <th>Descripción / Clasificación</th>
+                    <th>Cantidad Total en Layout</th>
+                    <th style="text-align: center;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaCodigosBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="seccion-desplegable">
+          <summary><span>📦 Inventario General (Entradas y Salidas)</span><span class="flecha">▶</span></summary>
+          <div class="seccion-desplegable-contenido">
+            <p style="font-size: 13px; color: #666;">Lleva el control de tu inventario por código: define el inventario inicial y registra entradas o salidas; el sistema calcula el inventario final automáticamente.</p>
+
+            <div class="form-group" style="margin-bottom: 12px; max-width: 320px;">
+              <label for="buscarCodigoInventario">🔍 Buscar código o descripción:</label>
+              <input type="text" id="buscarCodigoInventario" placeholder="Escribe para filtrar..." oninput="renderizarTablaInventario()">
+            </div>
+
+            <button class="btn-secundario" onclick="sincronizarInventarioConMapa()" style="margin-bottom: 12px;">🔄 Sincronizar inventario con el mapa</button>
+            <p style="font-size: 12px; color: #888; margin-top: -6px;">Úsalo una vez si tenías producto puesto en el mapa antes de que el inventario se empezara a actualizar solo. Ajusta entradas/salidas para que el inventario final coincida con lo que hay en el mapa, sin tocar tu inventario inicial capturado.</p>
+
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th>Inv. Inicial</th>
+                    <th>Entradas</th>
+                    <th>Salidas</th>
+                    <th>Inv. Final</th>
+                    <th style="text-align: center;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaInventarioBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- PESTAÑA BACKUPS: DATOS, RESPALDO Y SISTEMA -->
+    <div id="tab-backups" class="tab-content">
+      <div class="panel">
+        <h2>💾 Backups: Datos y Sistema</h2>
+        <p style="font-size: 13px; color: #666;">Importa o exporta tus códigos en Excel, guarda o carga un respaldo completo del sistema, y administra el borrado o restablecimiento de datos.</p>
+
+        <div class="barra-acciones-materiales info-box info-box--gray">
+          <div class="grupo-botones">
+            <span class="etiqueta-grupo">📊 Datos</span>
+            <div class="botones-fila">
+              <button class="btn-import" onclick="document.getElementById('inputExcelFile').click()">📤 Importar Excel</button>
+              <input type="file" id="inputExcelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="importarDesdeExcel(event)">
+              <button class="btn-excel" onclick="exportarAExcel()">📥 Exportar Excel</button>
+            </div>
+          </div>
+
+          <div class="separador-vertical"></div>
+
+          <div class="grupo-botones">
+            <span class="etiqueta-grupo">💾 Respaldo</span>
+            <div class="botones-fila">
+              <button class="btn-secundario" onclick="exportarRespaldoTotal()" style="background-color: #6f42c1;">💾 Respaldo Total</button>
+              <button id="btnCompartirRespaldo" class="btn-secundario" onclick="compartirRespaldoTotal()" style="background-color: #20c997; display: none;">📤 Compartir Respaldo</button>
+              <button class="btn-secundario" onclick="intentarCargarRespaldo()" style="background-color: #e83e8c;">📂 Cargar Respaldo</button>
+              <input type="file" id="inputRespaldoJson" accept=".json" style="display: none;" onchange="importarRespaldoTotal(event)">
+            </div>
+          </div>
+
+          <div class="separador-vertical"></div>
+
+          <div class="grupo-botones">
+            <span class="etiqueta-grupo">⚠️ Sistema</span>
+            <div class="botones-fila">
+              <button class="btn-secundario" onclick="borrarTodosLosCodigos()" style="background-color: #dc3545;">🗑️ Borrar Todos los Códigos</button>
+              <button class="btn-secundario" onclick="reiniciarDatosSistema()" style="background-color: #6c757d;">🔄 Restablecer</button>
+            </div>
+          </div>
+        </div>
+        <div id="avisoUltimoRespaldo" style="font-size: 12.5px; color: var(--text-muted); margin-top: -5px; margin-bottom: 10px;"></div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 5: HISTORIAL DE MOVIMIENTOS -->
+    <div id="tab-historial" class="tab-content">
+      <div class="panel">
+        <h2>📜 Historial de Movimientos</h2>
+        <p class="badge-layout-activo no-print" id="badgeLayoutHistorial" style="display:inline-block; margin-bottom: 8px; padding: 4px 10px; border-radius: 6px; background: var(--card-bg-alt); border: 1px solid var(--border-color); font-size: 13px; font-weight: 600;"></p>
+        <p style="font-size: 13px; color: var(--text-muted);">Registro de productos agregados, quitados o movidos entre ubicaciones (se guarda hasta los últimos 500 movimientos por layout).</p>
+        <div class="form-inline">
+          <div class="form-group" style="flex-grow: 1; min-width: 220px;">
+            <label for="inputFiltroHistorial">🔍 Buscar por ubicación, código o lote:</label>
+            <input type="text" id="inputFiltroHistorial" placeholder="Ej: A1, PASILLO-A, Lote-3..." oninput="renderizarHistorial()" style="width: 100%;">
+          </div>
+          <button class="btn-danger" onclick="vaciarHistorial()">🗑️ Vaciar Historial</button>
+        </div>
+        <div class="table-container" style="max-height: 500px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha y hora</th>
+                <th>Movimiento</th>
+                <th>Ubicación</th>
+                <th>Código</th>
+                <th>Lote</th>
+                <th>Cantidad</th>
+              </tr>
+            </thead>
+            <tbody id="tablaHistorialBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 4: MAPA INTERACTIVO (ACTIVO POR DEFECTO) -->
+    <div id="tab-mapa" class="tab-content active">
+      <div class="panel">
+        <div id="printHeader">
+          <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 5px 0; color: #000;">Mapa Interactivo de Ubicaciones - Almacén</h2>
+          <div style="font-size: 12px; color: #333;">
+            <span><strong>Layout:</strong> <span id="printLayout"></span></span> &nbsp;|&nbsp;
+            <span><strong>Fecha:</strong> <span id="printFecha"></span></span> &nbsp;|&nbsp; 
+            <span><strong>Hora:</strong> <span id="printHora"></span></span>
+          </div>
+        </div>
+
+        <h2 class="no-print">📍 Mapa Interactivo de Ubicaciones</h2>
+        <p class="badge-layout-activo no-print" id="badgeLayoutMapa" style="display:inline-block; margin: -8px 0 10px 0; padding: 4px 10px; border-radius: 6px; background: var(--card-bg-alt); border: 1px solid var(--border-color); font-size: 13px; font-weight: 600;"></p>
+
+        <details class="seccion-desplegable no-print">
+          <summary><span>🧱 Añadir, Insertar o Eliminar Filas y Columnas</span><span class="flecha">▶</span></summary>
+          <div class="seccion-desplegable-contenido">
+            <p style="font-size: 13px; color: #666;">Gestiona las dimensiones completas de tu almacén añadiendo, eliminando o insertando posiciones específicas.</p>
+
+            <div class="form-inline info-box info-box--gray" style="gap: 12px;">
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="agregarFila()">➕ Agregar Fila al Final</button>
+                <button class="btn-danger" onclick="eliminarUltimaFila()" style="background-color: #d9534f;">🗑️ Borrar Última Fila</button>
+                <button onclick="agregarColumna()">➕ Agregar Columna al Final</button>
+                <button class="btn-danger" onclick="eliminarUltimaColumna()" style="background-color: #d9534f;">🗑️ Borrar Última Columna</button>
+              </div>
+            </div>
+
+            <h4 style="margin-top: 15px; color: #333;">Insertar Filas o Columnas Intercaladas:</h4>
+            <div class="form-inline info-box info-box--indigo" style="gap: 20px;">
+              <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div class="form-group">
+                  <label for="selectInsertarAntesDe">Insertar nueva fila antes de:</label>
+                  <select id="selectInsertarAntesDe"></select>
+                </div>
+                <button onclick="insertarFilaEnMedio()" style="background-color: #0d6efd;">➕ Insertar Fila</button>
+              </div>
+
+              <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div class="form-group">
+                  <label for="selectInsertarColAntesDe">Insertar nueva columna antes de:</label>
+                  <select id="selectInsertarColAntesDe"></select>
+                </div>
+                <button onclick="insertarColumnaEnMedio()" style="background-color: #0d6efd;">➕ Insertar Columna</button>
+              </div>
+            </div>
+
+            <h4 style="margin-top: 15px; color: #333;">Borrado Específico por Selección:</h4>
+            <div class="form-inline">
+              <div class="form-group">
+                <label for="selectBorrarFila">Seleccionar Fila a Borrar:</label>
+                <select id="selectBorrarFila"></select>
+              </div>
+              <button class="btn-danger" onclick="borrarFilaEspecifica()">🗑️ Eliminar Fila</button>
+
+              <div class="form-group" style="margin-left: 20px;">
+                <label for="selectBorrarColumna">Seleccionar Columna a Borrar:</label>
+                <select id="selectBorrarColumna"></select>
+              </div>
+              <button class="btn-danger" onclick="borrarColumnaEspecifica()">🗑️ Eliminar Columna</button>
+            </div>
+          </div>
+        </details>
+
+        <div id="panelOcupacion" class="info-box info-box--blue" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">📊</span>
+            <div>
+              <span style="font-size: 13px; font-weight: bold; color: #0277bd; display: block;">ESTADO DE OCUPACIÓN DEL ALMACÉN</span>
+              <span id="lblPorcentajeOcupacion" style="font-size: 18px; font-weight: 800; color: #01579b;">0% Ocupado</span>
+              <span id="lblDetalleOcupacion" style="font-size: 12px; color: #555; margin-left: 8px;">(0 de 0 espacios asignados)</span>
+            </div>
+          </div>
+        </div>
+
+        <details class="seccion-desplegable no-print">
+          <summary><span>🔍 Buscar, Filtros y Ajustes del Mapa</span><span class="flecha">▶</span></summary>
+          <div class="seccion-desplegable-contenido">
+
+            <div class="info-box info-box--green" style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+              <span style="font-size: 20px;">🔍</span>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+                <label for="inputBuscadorMapa" style="font-size: 13px; font-weight: bold; color: #2d5a27;">Buscador Rápido de Productos / Lotes en el Mapa:</label>
+                <input type="text" id="inputBuscadorMapa" placeholder="Escribe un código, lote o palabra clave para ubicar en el mapa..." oninput="buscarProductoEnMapa()" style="width: 100%;">
+              </div>
+              <button class="btn-secundario" onclick="limpiarBusquedaMapa()" style="background-color: #555; align-self: flex-end;">Limpiar Búsqueda</button>
+            </div>
+
+            <div class="info-box info-box--gray" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <span style="font-size: 13px; font-weight: bold; display: block;">🧩 Selección múltiple de ubicaciones</span>
+                <span style="font-size: 12px; color: var(--text-muted);">Actívala para elegir varias celdas y asignarles el mismo código de una sola vez.</span>
+              </div>
+              <button id="btnModoSeleccion" class="btn-secundario btn-modo-seleccion" onclick="alternarModoSeleccion()">🧩 Activar selección múltiple</button>
+            </div>
+
+            <div class="info-box info-box--gray">
+              <span style="font-size: 13px; font-weight: bold; color: var(--text-color); display: block; margin-bottom: 8px;">👁️ Personalizar información visible en cada cuadro:</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <label style="font-size: 13px; cursor: pointer;"><input type="checkbox" id="chkUbicacion" checked onchange="renderizarMapa()"> Ubicación (Ej: A1)</label>
+                <label style="font-size: 13px; cursor: pointer;"><input type="checkbox" id="chkCodigo" checked onchange="renderizarMapa()"> Código / Pasillo</label>
+                <label style="font-size: 13px; cursor: pointer;"><input type="checkbox" id="chkDesc" checked onchange="renderizarMapa()"> Descripción / Clasificación Pasillo</label>
+                <label style="font-size: 13px; cursor: pointer;"><input type="checkbox" id="chkLote" checked onchange="renderizarMapa()"> Lote</label>
+                <label style="font-size: 13px; cursor: pointer;"><input type="checkbox" id="chkCantidad" checked onchange="renderizarMapa()"> Cantidad (Piezas)</label>
+              </div>
+            </div>
+
+            <div class="form-inline">
+              <div class="form-group">
+                <label for="selectFontSizePantalla">🔤 Letra en Pantalla:</label>
+                <select id="selectFontSizePantalla" onchange="cambiarTamanoLetra()">
+                  <option value="10px">Pequeña (10px)</option>
+                  <option value="13px" selected>Mediana (13px)</option>
+                  <option value="16px">Grande (16px)</option>
+                  <option value="18px">Extra Grande (18px)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="selectFontSizeImpresion">🖨️ Letra Impresa:</label>
+                <select id="selectFontSizeImpresion" onchange="cambiarTamanoLetra()">
+                  <option value="9px">Chica (9px)</option>
+                  <option value="12px" selected>Mediana (12px)</option>
+                  <option value="15px">Grande (15px)</option>
+                  <option value="18px">Extra Grande (18px)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="selectTipoImpresion">Modo de Impresión:</label>
+                <select id="selectTipoImpresion" onchange="cambiarModoImpresion()">
+                  <option value="todas">Imprimir Todo el Mapa</option>
+                  <option value="fila">Por Fila Individual</option>
+                  <option value="rango">Por Cuadrante (Ej: A1 a D7)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="selectTamanoImpresion">Tamaño en Hoja:</label>
+                <select id="selectTamanoImpresion">
+                  <option value="micro" selected>Micro (Ultra denso / Máximo posible)</option>
+                  <option value="mini">Mini</option>
+                  <option value="compacto">Compacto</option>
+                  <option value="normal">Normal (Grande)</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="divFilaUnica" style="display: none;">
+                <label for="selectFilaImprimir">Seleccionar Fila:</label>
+                <select id="selectFilaImprimir"></select>
+              </div>
+
+              <div id="divRangoImpresion" style="display: none; gap: 8px; align-items: flex-end;">
+                <div class="form-group">
+                  <label>Desde:</label>
+                  <input type="text" id="printDesde" placeholder="Ej: A1" style="width: 70px;">
+                </div>
+                <div class="form-group">
+                  <label>Hasta:</label>
+                  <input type="text" id="printHasta" placeholder="Ej: D7" style="width: 70px;">
+                </div>
+              </div>
+
+              <button class="btn-secundario" onclick="ejecutarImpresion()">🖨️ Imprimir / Guardar PDF</button>
+            </div>
+
+          </div>
+        </details>
+
+        <div id="barraSeleccion" class="barra-seleccion no-print">
+          <span id="lblSeleccionCount">0 ubicaciones seleccionadas</span>
+          <div class="acciones-seleccion">
+            <button onclick="abrirModalSeleccionMultiple()" style="background-color: white; color: var(--primary-color);">📦 Asignar código a la selección</button>
+            <button class="btn-secundario" onclick="limpiarSeleccionMultiple()">Limpiar selección</button>
+          </div>
+        </div>
+
+        <div class="mapa-container">
+          <div class="mapa-controles-flotantes no-print" id="panelControlesZoom">
+            <button class="btn-zoom-toggle" onclick="alternarPanelZoom(event)" title="Mostrar/ocultar controles de zoom">
+              🔍 <span id="lblZoomValorMini">100%</span>
+            </button>
+            <div class="cuerpo-controles-zoom">
+              <div class="fila-zoom-principal">
+                <button class="btn-zoom" onclick="ajustarZoomMapa(-0.1)" title="Alejar (ver más mapa)">−</button>
+                <span id="lblZoomValor">100%</span>
+                <button class="btn-zoom" onclick="ajustarZoomMapa(0.1)" title="Acercar (ver más detalle)">+</button>
+              </div>
+              <div class="fila-zoom-secundaria">
+                <button class="btn-accion-zoom" onclick="restablecerZoomMapa()" title="Restablecer zoom (100%)">↺</button>
+                <button class="btn-accion-zoom" onclick="ajustarZoomAlAncho()" title="Ajustar a pantalla">↔️</button>
+              </div>
+            </div>
+          </div>
+          <div class="mapa-wrapper" id="mapaWrapper">
+            <div id="mapaGrid" class="mapa-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GESTIÓN CELDAS -->
+  <div id="modalCelda" class="modal-overlay">
+    <div class="modal">
+      <h3 id="modalTitulo">Gestionar Ubicación</h3>
+      
+      <div class="modal-body">
+        <div id="bloqueProductosUbicacion" style="margin-bottom: 20px;">
+          <h4 style="margin: 0 0 10px 0; color: #495057;">📦 Productos en esta ubicación:</h4>
+          <div class="table-container" style="max-height: 180px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Lote</th>
+                  <th>Cant.</th>
+                  <th style="text-align: center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaProductosUbicacionBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
+        <h4 style="margin: 0 0 10px 0; color: #007bff;">➕ Agregar o Modificar Producto</h4>
+        
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label for="buscarCodigoUbicacion">🔍 Buscar Código o Pasillo:</label>
+          <input type="text" id="buscarCodigoUbicacion" placeholder="Escribe para filtrar..." oninput="filtrarCodigosModal()">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="selectCodigoUbicacion">Selecciona Código / Pasillo:</label>
+          <select id="selectCodigoUbicacion"></select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="inputProducto">Lote / Referencia:</label>
+          <input type="text" id="inputProducto" placeholder="Ej: Lote-A1">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="inputCantidad">Cantidad de piezas:</label>
+          <input type="number" id="inputCantidad" value="0" min="0" placeholder="Ej: 50">
+        </div>
+
+        <button id="btnGuardarItemCelda" onclick="agregarOActualizarItemEnCelda()" style="width: 100%; margin-top: 5px;">💾 Guardar Producto en Ubicación</button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secundario" onclick="cerrarModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR DE NOTIFICACIONES (TOASTS) -->
+  <div id="toastContainer" class="toast-container no-print"></div>
+
+  <!-- MODAL GENÉRICO DE CONFIRMACIÓN -->
+  <div id="modalConfirmacion" class="modal-overlay no-print">
+    <div class="modal modal-confirmacion">
+      <div class="icono-confirmacion" id="iconoConfirmacion">⚠️</div>
+      <h3 id="tituloConfirmacion">Confirmar acción</h3>
+      <p id="mensajeConfirmacion">¿Estás seguro?</p>
+      <div class="modal-actions">
+        <button class="btn-secundario" id="btnConfirmarCancelar">Cancelar</button>
+        <button class="btn-danger" id="btnConfirmarAceptar" style="padding: 9px 16px; font-size: 14px;">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GENÉRICO DE CONTRASEÑA -->
+  <div id="modalPassword" class="modal-overlay no-print">
+    <div class="modal modal-confirmacion">
+      <div class="icono-confirmacion">🔒</div>
+      <h3 id="tituloPassword">Acción protegida</h3>
+      <p id="mensajePassword">Ingresa la contraseña para continuar.</p>
+      <div class="form-group" style="text-align: left; margin-top: 10px;">
+        <input type="password" id="inputPasswordModal" placeholder="Contraseña" style="width: 100%;">
+        <span id="errorPasswordModal" style="color: var(--danger-color); font-size: 12.5px; display: none;">Contraseña incorrecta.</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secundario" id="btnPasswordCancelar">Cancelar</button>
+        <button id="btnPasswordAceptar" style="padding: 9px 16px; font-size: 14px;">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GENÉRICO DE TEXTO -->
+  <div id="modalTexto" class="modal-overlay no-print">
+    <div class="modal modal-confirmacion">
+      <div class="icono-confirmacion" id="iconoTexto">📦</div>
+      <h3 id="tituloTexto">Ingresa un valor</h3>
+      <p id="mensajeTexto">Mensaje</p>
+      <div class="form-group" style="text-align: left; margin-top: 10px;">
+        <input type="text" id="inputTextoModal" placeholder="">
+        <span id="errorTextoModal" style="color: var(--danger-color); font-size: 12.5px; display: none;">Valor no válido.</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secundario" id="btnTextoCancelar">Cancelar</button>
+        <button id="btnTextoAceptar" style="padding: 9px 16px; font-size: 14px;">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDICIÓN DE CANTIDAD -->
+  <div id="modalCantidad" class="modal-overlay no-print">
+    <div class="modal modal-confirmacion">
+      <div class="icono-confirmacion">🔢</div>
+      <h3>Editar cantidad</h3>
+      <p id="mensajeCantidad" style="margin-bottom: 4px;">Producto</p>
+
+      <div class="form-group" style="text-align: left; margin-top: 10px;">
+        <label for="inputConteoNuevo">Cantidad en piezas:</label>
+        <input type="number" id="inputConteoNuevo" min="0" placeholder="Ej: 45">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secundario" id="btnCantidadCancelar" onclick="cerrarModalCantidad()">Cancelar</button>
+        <button id="btnCantidadAceptar" style="padding: 9px 16px; font-size: 14px;" onclick="confirmarEdicionCantidad()">💾 Guardar cantidad</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PASSWORD_SISTEMA = "1234";
+
+    let listaCodigosDefault = [
+      { id: 'SIN-CODIGO', desc: 'Sin Ubicar / Vacío', color: '#6c757d' },
+      { id: 'PASILLO-A', desc: '🚶 PASILLO A - Materia Prima', color: '#343a40' },
+      { id: 'PASILLO-B', desc: '🚶 PASILLO B - Cartón y Empaque', color: '#343a40' },
+      { id: '12341003_V2', desc: 'No se mueve', color: '#bcbd22' },
+      { id: '12341003_V3', desc: 'Muere poco', color: '#b5cf6b' },
+      { id: '14 SBS', desc: 'Blanco SBS OS 14P', color: '#fdae61' },
+      { id: '15 SBS', desc: 'Blanco SBS OS 15P', color: '#d7191c' },
+      { id: '16 SBS', desc: 'Blanco SBS OS 16P', color: '#fee08b' },
+      { id: '20 SBS', desc: 'Blanco SBS OS 20P', color: '#abdda4' }
+    ];
+
+    let listaCodigos = [];
+    let totalFilas = 3;
+    let totalColumnas = 4;
+    let datosMapa = [];
+    let etiquetasFilas = {};
+    let filaSel = null;
+    let colSel = null;
+    let codigoEditandoId = null;
+
+    // Estado de selección múltiple de celdas
+    let modoSeleccionMultiple = false;
+    let celdasSeleccionadas = new Set(); // guarda claves "f-c"
+    let historialMovimientos = [];
+
+    // Inventario general por código: { [codigoId]: { inicial, entradas, salidas } }
+    // Independiente de dónde esté físicamente ubicado en el mapa.
+    let inventarioDatos = {};
+
+    /* ============================================================
+       DOS LAYOUTS (MAPAS) INDEPENDIENTES
+       Los códigos (listaCodigos) y el inventario (inventarioDatos) son
+       COMPARTIDOS entre ambos layouts. Lo que cambia por layout es la
+       estructura del mapa: filas/columnas, las celdas con sus productos
+       (datosMapa), las etiquetas de zonas (etiquetasFilas) y su propio
+       historial de movimientos, ya que ese historial está atado a
+       ubicaciones físicas de cada mapa.
+       Las variables totalFilas, totalColumnas, datosMapa, etiquetasFilas
+       e historialMovimientos siguen siendo las que usa el resto del
+       código (son "el layout que se está viendo ahora"); layoutsData
+       guarda ambos layouts completos y se sincroniza al cambiar de uno
+       a otro o al guardar/cargar de localStorage.
+       ============================================================ */
+    let layoutActivo = 1;
+    let layoutsData = {
+      1: { nombre: 'Layout 1', totalFilas: 3, totalColumnas: 4, datosMapa: [], etiquetasFilas: {}, historialMovimientos: [] },
+      2: { nombre: 'Layout 2', totalFilas: 3, totalColumnas: 4, datosMapa: [], etiquetasFilas: {}, historialMovimientos: [] }
+    };
+
+    // Copia el estado "en vivo" (globals) hacia layoutsData[layoutActivo].
+    function guardarLayoutActivoEnMemoria() {
+      layoutsData[layoutActivo].totalFilas = totalFilas;
+      layoutsData[layoutActivo].totalColumnas = totalColumnas;
+      layoutsData[layoutActivo].datosMapa = datosMapa;
+      layoutsData[layoutActivo].etiquetasFilas = etiquetasFilas;
+      layoutsData[layoutActivo].historialMovimientos = historialMovimientos;
+    }
+
+    // Carga layoutsData[layoutActivo] hacia el estado "en vivo" (globals).
+    function cargarLayoutActivoDesdeMemoria() {
+      const l = layoutsData[layoutActivo];
+      totalFilas = l.totalFilas;
+      totalColumnas = l.totalColumnas;
+      datosMapa = normalizarEstructuraMapa(l.datosMapa);
+      etiquetasFilas = l.etiquetasFilas || {};
+      historialMovimientos = l.historialMovimientos || [];
+      if (!datosMapa || datosMapa.length === 0) {
+        inicializarEstructuraMapa();
+      }
+    }
+
+    // Cambia de layout activo: guarda el actual, activa el nuevo y refresca la UI.
+    function cambiarLayout(n) {
+      if (n === layoutActivo) return;
+      guardarLayoutActivoEnMemoria();
+      layoutActivo = n;
+      cargarLayoutActivoDesdeMemoria();
+      guardarEnLocalStorage();
+
+      document.querySelectorAll('.btn-layout').forEach(btn => btn.classList.remove('active'));
+      const btnActivo = document.getElementById(`btnLayout${n}`);
+      if (btnActivo) btnActivo.classList.add('active');
+
+      actualizarSelectFilasZona();
+      actualizarSelectoresEstructura();
+      renderizarMapa();
+      actualizarBadgesLayout();
+      const tabHistorialActivo = document.getElementById('tab-historial');
+      if (tabHistorialActivo && tabHistorialActivo.classList.contains('active')) renderizarHistorial();
+      mostrarToast(`Mostrando ${layoutsData[n].nombre}.`, 'exito');
+    }
+
+    // Muestra en las pestañas de Mapa, Estructura y Zonas cuál layout se está editando.
+    function actualizarBadgesLayout() {
+      const nombre = layoutsData[layoutActivo].nombre;
+      const texto = `🏭 Editando: ${nombre}`;
+      ['badgeLayoutMapa', 'badgeLayoutEstructura', 'badgeLayoutZonas', 'badgeLayoutHistorial'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = texto;
+      });
+    }
+
+    /* ============================================================
+       TEMA (MODO CLARO / OSCURO)
+       ============================================================ */
+    function aplicarTemaGuardado() {
+      const temaGuardado = localStorage.getItem('inv_tema') || 'claro';
+      document.documentElement.setAttribute('data-theme', temaGuardado === 'oscuro' ? 'dark' : 'light');
+      const btn = document.getElementById('btnToggleTema');
+      if (btn) btn.textContent = temaGuardado === 'oscuro' ? '☀️ Modo Claro' : '🌙 Modo Oscuro';
+    }
+    function alternarTema() {
+      const actual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'oscuro' : 'claro';
+      const nuevo = actual === 'oscuro' ? 'claro' : 'oscuro';
+      localStorage.setItem('inv_tema', nuevo);
+      aplicarTemaGuardado();
+    }
+
+    /* ============================================================
+       NOTIFICACIONES (TOASTS) — reemplazan a alert()
+       ============================================================ */
+    function mostrarToast(mensaje, tipo = 'info') {
+      const contenedor = document.getElementById('toastContainer');
+      const iconos = { exito: '✅', error: '⛔', aviso: '⚠️', info: 'ℹ️' };
+      const toast = document.createElement('div');
+      toast.className = `toast ${tipo}`;
+      toast.innerHTML = `
+        <span class="toast-icono">${iconos[tipo] || iconos.info}</span>
+        <span>${mensaje}</span>
+        <button class="toast-cerrar" aria-label="Cerrar">✕</button>
+      `;
+      const quitar = () => {
+        toast.classList.add('saliendo');
+        setTimeout(() => toast.remove(), 200);
+      };
+      toast.querySelector('.toast-cerrar').onclick = quitar;
+      contenedor.appendChild(toast);
+      setTimeout(quitar, 4500);
+    }
+
+    /* ============================================================
+       MODAL DE CONFIRMACIÓN — reemplaza a confirm()
+       Uso: const ok = await mostrarConfirmacion('¿Seguro?');
+       ============================================================ */
+    function mostrarConfirmacion(mensaje, opciones = {}) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById('modalConfirmacion');
+        document.getElementById('tituloConfirmacion').textContent = opciones.titulo || 'Confirmar acción';
+        document.getElementById('mensajeConfirmacion').textContent = mensaje;
+        document.getElementById('iconoConfirmacion').textContent = opciones.icono || '⚠️';
+        const btnAceptar = document.getElementById('btnConfirmarAceptar');
+        const btnCancelar = document.getElementById('btnConfirmarCancelar');
+        btnAceptar.textContent = opciones.textoAceptar || 'Confirmar';
+
+        const limpiar = () => {
+          overlay.style.display = 'none';
+          btnAceptar.onclick = null;
+          btnCancelar.onclick = null;
+        };
+        btnAceptar.onclick = () => { limpiar(); resolve(true); };
+        btnCancelar.onclick = () => { limpiar(); resolve(false); };
+        overlay.style.display = 'flex';
+      });
+    }
+
+    /* ============================================================
+       MODAL DE CONTRASEÑA — reemplaza a prompt()
+       Uso: const ok = await pedirPassword('Mensaje...');
+       ============================================================ */
+    function pedirPassword(mensaje) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById('modalPassword');
+        const input = document.getElementById('inputPasswordModal');
+        const error = document.getElementById('errorPasswordModal');
+        document.getElementById('mensajePassword').textContent = mensaje;
+        input.value = '';
+        error.style.display = 'none';
+
+        const btnAceptar = document.getElementById('btnPasswordAceptar');
+        const btnCancelar = document.getElementById('btnPasswordCancelar');
+
+        const limpiar = () => {
+          overlay.style.display = 'none';
+          btnAceptar.onclick = null;
+          btnCancelar.onclick = null;
+          input.onkeydown = null;
+        };
+        const intentar = () => {
+          if (input.value === PASSWORD_SISTEMA) {
+            limpiar();
+            resolve(true);
+          } else {
+            error.style.display = 'inline';
+            input.focus();
+          }
+        };
+        btnAceptar.onclick = intentar;
+        input.onkeydown = (e) => { if (e.key === 'Enter') intentar(); };
+        btnCancelar.onclick = () => { limpiar(); resolve(false); };
+        overlay.style.display = 'flex';
+        setTimeout(() => input.focus(), 50);
+      });
+    }
+
+    /* ============================================================
+       MODAL DE TEXTO GENÉRICO — para pedir un valor corto (ej. mover producto)
+       Uso: const valor = await pedirTexto('Mensaje...', { valorInicial, placeholder, validar });
+       ============================================================ */
+    function pedirTexto(mensaje, opciones = {}) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById('modalTexto');
+        const input = document.getElementById('inputTextoModal');
+        const error = document.getElementById('errorTextoModal');
+        document.getElementById('tituloTexto').textContent = opciones.titulo || 'Ingresa un valor';
+        document.getElementById('mensajeTexto').textContent = mensaje;
+        document.getElementById('iconoTexto').textContent = opciones.icono || '📦';
+        input.placeholder = opciones.placeholder || '';
+        input.value = opciones.valorInicial || '';
+        error.style.display = 'none';
+        error.textContent = opciones.mensajeError || 'Valor no válido.';
+
+        const btnAceptar = document.getElementById('btnTextoAceptar');
+        const btnCancelar = document.getElementById('btnTextoCancelar');
+
+        const limpiar = () => {
+          overlay.style.display = 'none';
+          btnAceptar.onclick = null;
+          btnCancelar.onclick = null;
+          input.onkeydown = null;
+        };
+        const intentar = () => {
+          const valor = input.value.trim();
+          if (opciones.validar && !opciones.validar(valor)) {
+            error.style.display = 'inline';
+            input.focus();
+            return;
+          }
+          limpiar();
+          resolve(valor);
+        };
+        btnAceptar.onclick = intentar;
+        input.onkeydown = (e) => { if (e.key === 'Enter') intentar(); };
+        btnCancelar.onclick = () => { limpiar(); resolve(null); };
+        overlay.style.display = 'flex';
+        setTimeout(() => { input.focus(); input.select(); }, 50);
+      });
+    }
+
+    /* ============================================================
+       RECORDATORIO DE RESPALDO
+       ============================================================ */
+    function actualizarEtiquetaUltimoRespaldo() {
+      const el = document.getElementById('avisoUltimoRespaldo');
+      if (!el) return;
+      const ultimo = localStorage.getItem('inv_ultimo_respaldo');
+      if (!ultimo) {
+        el.innerHTML = '⚠️ Aún no has exportado ningún respaldo.';
+        el.style.color = 'var(--warning-color)';
+        return;
+      }
+      const dias = Math.floor((Date.now() - Number(ultimo)) / 86400000);
+      if (dias <= 0) {
+        el.textContent = '✅ Último respaldo: hoy.';
+        el.style.color = 'var(--success-color)';
+      } else if (dias === 1) {
+        el.textContent = '✅ Último respaldo: hace 1 día.';
+        el.style.color = 'var(--text-muted)';
+      } else if (dias < 7) {
+        el.textContent = `✅ Último respaldo: hace ${dias} días.`;
+        el.style.color = 'var(--text-muted)';
+      } else {
+        el.textContent = `⚠️ Último respaldo: hace ${dias} días. Te recomendamos exportar uno nuevo.`;
+        el.style.color = 'var(--warning-color)';
+      }
+    }
+
+    function verificarRecordatorioRespaldo() {
+      const ultimo = localStorage.getItem('inv_ultimo_respaldo');
+      const dias = ultimo ? Math.floor((Date.now() - Number(ultimo)) / 86400000) : null;
+      if (dias === null || dias >= 7) {
+        setTimeout(() => {
+          mostrarToast(
+            dias === null
+              ? 'Aún no has exportado un respaldo de tus datos. Puedes hacerlo desde "Materiales e Inventario".'
+              : `Han pasado ${dias} días desde tu último respaldo. Considera exportar uno nuevo.`,
+            'aviso'
+          );
+        }, 1200);
+      }
+    }
+
+    // Función para cambiar de pestaña activa
+    function cambiarPestaña(idTab, btnElement) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.btn-tab').forEach(btn => btn.classList.remove('active'));
+
+      document.getElementById(idTab).classList.add('active');
+      btnElement.classList.add('active');
+
+      if (idTab === 'tab-historial') renderizarHistorial();
+      if (idTab === 'tab-materiales') { renderizarListaCodigos(); renderizarTablaInventario(); }
+
+      cerrarMenuMovil();
+    }
+
+    /* Menú deslizante (móvil): se abre con el botón hamburguesa y se
+       cierra tocando el fondo oscuro, o automáticamente al elegir una
+       sección, para no tener que subir toda la página cada vez. */
+    function alternarMenuMovil() {
+      document.getElementById('navTabsBar').classList.toggle('abierto');
+      document.getElementById('overlayMenuMovil').classList.toggle('activo');
+    }
+    function cerrarMenuMovil() {
+      document.getElementById('navTabsBar').classList.remove('abierto');
+      document.getElementById('overlayMenuMovil').classList.remove('activo');
+    }
+
+    /* ============================================================
+       HISTORIAL DE MOVIMIENTOS
+       ============================================================ */
+    function registrarMovimiento(tipo, ubicacion, codigoId, producto, cantidad, detalle) {
+      historialMovimientos.unshift({
+        fecha: new Date().toISOString(),
+        tipo: tipo,
+        ubicacion: ubicacion,
+        codigoId: codigoId || '',
+        producto: producto || '',
+        cantidad: cantidad || 0,
+        detalle: detalle || ''
+      });
+      if (historialMovimientos.length > 500) historialMovimientos.length = 500;
+    }
+
+    function formatearFechaHistorial(iso) {
+      const d = new Date(iso);
+      return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+        ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderizarHistorial() {
+      const tbody = document.getElementById('tablaHistorialBody');
+      const filtro = (document.getElementById('inputFiltroHistorial').value || '').toLowerCase().trim();
+
+      const filas = historialMovimientos.filter(m => {
+        if (!filtro) return true;
+        return m.ubicacion.toLowerCase().includes(filtro) ||
+               m.codigoId.toLowerCase().includes(filtro) ||
+               m.producto.toLowerCase().includes(filtro);
+      });
+
+      if (filas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Sin movimientos registrados todavía.</td></tr>`;
+        return;
+      }
+
+      const iconosTipo = { 'Agregado': '➕', 'Quitado': '➖', 'Movido': '🔀', 'Asignación masiva': '📦' };
+
+      tbody.innerHTML = filas.map(m => `
+        <tr>
+          <td style="white-space: nowrap; font-size: 12px; color: var(--text-muted);">${formatearFechaHistorial(m.fecha)}</td>
+          <td>${iconosTipo[m.tipo] || ''} ${m.tipo}</td>
+          <td><strong>${m.ubicacion}</strong></td>
+          <td>${m.codigoId}</td>
+          <td>${m.producto || '-'}</td>
+          <td>${m.cantidad}</td>
+        </tr>
+      `).join('') + (filas.length && document.getElementById('modalTexto') ? '' : '');
+
+      // Agrega la columna de detalle solo si hay contenido relevante (movimientos)
+      tbody.querySelectorAll('tr').forEach((tr, i) => {
+        if (filas[i] && filas[i].detalle) {
+          tr.title = filas[i].detalle;
+        }
+      });
+    }
+
+    async function vaciarHistorial() {
+      if (historialMovimientos.length === 0) {
+        mostrarToast('El historial ya está vacío.', 'info');
+        return;
+      }
+      const confirmado = await mostrarConfirmacion('Se borrará permanentemente el registro de movimientos. Esta acción no se puede deshacer.', { titulo: '¿Vaciar historial?', icono: '🗑️' });
+      if (confirmado) {
+        historialMovimientos = [];
+        guardarEnLocalStorage();
+        renderizarHistorial();
+        mostrarToast('Historial vaciado.', 'exito');
+      }
+    }
+
+    function cambiarTamanoLetra() {
+      const fontSizePantalla = document.getElementById('selectFontSizePantalla').value;
+      const fontSizeImpresion = document.getElementById('selectFontSizeImpresion').value;
+      
+      document.documentElement.style.setProperty('--font-size-pantalla', fontSizePantalla);
+      document.documentElement.style.setProperty('--font-size-impresion', fontSizeImpresion);
+      
+      localStorage.setItem('inv_font_pantalla', fontSizePantalla);
+      localStorage.setItem('inv_font_impresion', fontSizeImpresion);
+    }
+
+    function esCodigoPasillo(id) {
+      return id && id.toUpperCase().includes('PASILLO');
+    }
+
+    function normalizarEstructuraMapa(mapa) {
+      return mapa.map(fila => fila.map(celda => {
+        if (!celda.items) {
+          let items = [];
+          if (celda.codigoId && celda.codigoId !== 'SIN-CODIGO') {
+            items.push({
+              codigoId: celda.codigoId,
+              producto: celda.producto || '',
+              cantidad: Number(celda.cantidad) || 0
+            });
+          }
+          return {
+            idUbicacion: celda.idUbicacion,
+            items: items
+          };
+        }
+        return celda;
+      }));
+    }
+
+    function guardarEnLocalStorage() {
+      guardarLayoutActivoEnMemoria();
+      localStorage.setItem('inv_codigos', JSON.stringify(listaCodigos));
+      localStorage.setItem('inv_layouts', JSON.stringify(layoutsData));
+      localStorage.setItem('inv_layout_activo', String(layoutActivo));
+      localStorage.setItem('inv_inventario_general', JSON.stringify(inventarioDatos));
+    }
+
+    function cargarDesdeLocalStorage() {
+      const codigosGuardados = localStorage.getItem('inv_codigos');
+      const layoutsGuardados = localStorage.getItem('inv_layouts');
+      const layoutActivoGuardado = localStorage.getItem('inv_layout_activo');
+      const inventarioGuardado = localStorage.getItem('inv_inventario_general');
+      const fontPantalla = localStorage.getItem('inv_font_pantalla');
+      const fontImpresion = localStorage.getItem('inv_font_impresion');
+
+      if (fontPantalla) document.getElementById('selectFontSizePantalla').value = fontPantalla;
+      if (fontImpresion) document.getElementById('selectFontSizeImpresion').value = fontImpresion;
+      cambiarTamanoLetra();
+
+      if (codigosGuardados) {
+        listaCodigos = JSON.parse(codigosGuardados);
+      } else {
+        listaCodigos = [...listaCodigosDefault];
+      }
+
+      inventarioDatos = inventarioGuardado ? JSON.parse(inventarioGuardado) : {};
+
+      if (layoutsGuardados) {
+        // Formato nuevo (dos layouts) ya guardado anteriormente.
+        layoutsData = JSON.parse(layoutsGuardados);
+      } else {
+        // Migración desde el formato anterior (un solo mapa) hacia Layout 1,
+        // dejando el Layout 2 vacío y listo para usarse.
+        const filasGuardadas = localStorage.getItem('inv_filas');
+        const columnasGuardadas = localStorage.getItem('inv_columnas');
+        const mapaGuardado = localStorage.getItem('inv_mapa');
+        const etiquetasGuardadas = localStorage.getItem('inv_etiquetas_filas');
+        const historialGuardado = localStorage.getItem('inv_historial');
+
+        layoutsData[1].totalFilas = filasGuardadas ? parseInt(filasGuardadas) : 3;
+        layoutsData[1].totalColumnas = columnasGuardadas ? parseInt(columnasGuardadas) : 4;
+        layoutsData[1].datosMapa = mapaGuardado ? JSON.parse(mapaGuardado) : [];
+        layoutsData[1].etiquetasFilas = etiquetasGuardadas ? JSON.parse(etiquetasGuardadas) : {};
+        layoutsData[1].historialMovimientos = historialGuardado ? JSON.parse(historialGuardado) : [];
+      }
+
+      layoutActivo = layoutActivoGuardado ? parseInt(layoutActivoGuardado) : 1;
+      if (layoutActivo !== 1 && layoutActivo !== 2) layoutActivo = 1;
+
+      cargarLayoutActivoDesdeMemoria();
+      if (!datosMapa || datosMapa.length === 0) {
+        inicializarEstructuraMapa();
+      }
+
+      const btnActivo = document.getElementById(`btnLayout${layoutActivo}`);
+      if (btnActivo) {
+        document.querySelectorAll('.btn-layout').forEach(btn => btn.classList.remove('active'));
+        btnActivo.classList.add('active');
+      }
+    }
+
+    async function reiniciarDatosSistema() {
+      const passwordOk = await pedirPassword("Ingresa la contraseña para restablecer el sistema:");
+      if (!passwordOk) return;
+
+      const confirmado = await mostrarConfirmacion('Esto borrará todos los códigos, ambos layouts (mapas y zonas) y su historial. Esta acción no se puede deshacer.', { titulo: '¿Restablecer todos los datos?', icono: '🔄', textoAceptar: 'Sí, restablecer' });
+      if (confirmado) {
+        localStorage.clear();
+        listaCodigos = [...listaCodigosDefault];
+        totalFilas = 3;
+        totalColumnas = 4;
+        etiquetasFilas = {};
+        historialMovimientos = [];
+        inventarioDatos = {};
+        codigoEditandoId = null;
+        layoutActivo = 1;
+        layoutsData = {
+          1: { nombre: 'Layout 1', totalFilas: 3, totalColumnas: 4, datosMapa: [], etiquetasFilas: {}, historialMovimientos: [] },
+          2: { nombre: 'Layout 2', totalFilas: 3, totalColumnas: 4, datosMapa: [], etiquetasFilas: {}, historialMovimientos: [] }
+        };
+        document.querySelectorAll('.btn-layout').forEach(btn => btn.classList.remove('active'));
+        const btnL1 = document.getElementById('btnLayout1');
+        if (btnL1) btnL1.classList.add('active');
+        restaurarFormularioCreacion();
+        inicializarEstructuraMapa();
+        renderizarListaCodigos();
+        renderizarTablaInventario();
+        actualizarSelectFilasZona();
+        actualizarSelectoresEstructura();
+        renderizarMapa();
+        actualizarBadgesLayout();
+        mostrarToast('El sistema se ha restablecido.', 'exito');
+      }
+    }
+
+    // Carga la librería XLSX solo la primera vez que se necesita (exportar/importar Excel),
+    // en vez de cargarla siempre al abrir la página. Esto acelera el arranque en el celular.
+    let xlsxCargaPromesa = null;
+    function asegurarLibreriaExcel() {
+      if (typeof XLSX !== 'undefined') return Promise.resolve();
+      if (xlsxCargaPromesa) return xlsxCargaPromesa;
+      xlsxCargaPromesa = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = () => resolve();
+        script.onerror = () => {
+          xlsxCargaPromesa = null;
+          reject(new Error('No se pudo cargar la librería de Excel.'));
+        };
+        document.head.appendChild(script);
+      });
+      return xlsxCargaPromesa;
+    }
+
+    // --- Control de Zoom del Mapa ---
+    let zoomMapaActual = parseFloat(localStorage.getItem('inv_zoom_mapa')) || 1;
+
+    function aplicarZoomMapa() {
+      const grid = document.getElementById('mapaGrid');
+      if (!grid) return;
+      grid.style.transform = `scale(${zoomMapaActual})`;
+      const porcentaje = `${Math.round(zoomMapaActual * 100)}%`;
+      document.getElementById('lblZoomValor').textContent = porcentaje;
+      const lblMini = document.getElementById('lblZoomValorMini');
+      if (lblMini) lblMini.textContent = porcentaje;
+      localStorage.setItem('inv_zoom_mapa', String(zoomMapaActual));
+    }
+
+    // Abre/cierra el panel de zoom compacto. Se queda colapsado como
+    // solo un botoncito para no tapar el mapa, y se abre solo cuando
+    // se necesita ajustar el zoom con los botones.
+    function alternarPanelZoom(event) {
+      if (event) event.stopPropagation();
+      const panel = document.getElementById('panelControlesZoom');
+      if (panel) panel.classList.toggle('expandido');
+    }
+    document.addEventListener('click', (e) => {
+      const panel = document.getElementById('panelControlesZoom');
+      if (panel && panel.classList.contains('expandido') && !panel.contains(e.target)) {
+        panel.classList.remove('expandido');
+      }
+    });
+
+    function ajustarZoomMapa(delta) {
+      zoomMapaActual = Math.min(2, Math.max(0.4, Math.round((zoomMapaActual + delta) * 100) / 100));
+      aplicarZoomMapa();
+    }
+
+    function fijarZoomMapa(valor) {
+      zoomMapaActual = Math.min(2, Math.max(0.4, parseFloat(valor)));
+      aplicarZoomMapa();
+    }
+
+    function restablecerZoomMapa() {
+      zoomMapaActual = 1;
+      aplicarZoomMapa();
+    }
+
+    // Calcula automáticamente el zoom necesario para que quepa todo el ancho del mapa
+    // en la pantalla, sin tener que hacer scroll lateral (útil para ver "más mapa" de golpe).
+    function ajustarZoomAlAncho() {
+      const wrapper = document.getElementById('mapaWrapper');
+      const grid = document.getElementById('mapaGrid');
+      if (!wrapper || !grid) return;
+      const zoomAnterior = zoomMapaActual;
+      grid.style.transform = 'scale(1)';
+      const anchoReal = grid.scrollWidth;
+      const anchoDisponible = wrapper.clientWidth - 10;
+      let nuevoZoom = anchoReal > 0 ? anchoDisponible / anchoReal : 1;
+      nuevoZoom = Math.min(1.6, Math.max(0.4, Math.round(nuevoZoom * 100) / 100));
+      zoomMapaActual = nuevoZoom;
+      aplicarZoomMapa();
+    }
+
+    /* ============================================================
+       ZOOM CON GESTO DE PELLIZCO (PINCH) EN EL MAPA
+       Permite abrir/cerrar los dedos directamente sobre el mapa para
+       hacer zoom, sin tener que ir a ningún botón o barra. El punto
+       donde están los dedos se mantiene fijo en pantalla mientras
+       se hace zoom, para que nunca "salte" el mapa.
+
+       Para que se sienta fluido:
+       - Se quita la transición CSS mientras se pellizca (si no, cada
+         evento pelea con la animación del anterior y se traba).
+       - Se agrupan las actualizaciones con requestAnimationFrame en
+         vez de aplicar el cambio en cada touchmove (que puede disparar
+         muchísimas veces por segundo).
+       - Se llama preventDefault() desde el primer toque con 2 dedos,
+         para que el navegador no intente su propio zoom nativo de
+         página al mismo tiempo que nuestro gesto.
+       - El getBoundingClientRect() del contenedor se calcula una sola
+         vez al iniciar el pellizco (no en cada frame), porque forzar
+         ese cálculo repetidamente es una causa común de trabas.
+       ============================================================ */
+    let pinchActivo = false;
+    let pinchDistanciaInicial = 0;
+    let pinchZoomInicial = 1;
+
+    function distanciaEntreToques(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function puntoMedioToques(t1, t2) {
+      return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+    }
+
+    // Acordeón: dentro de un mismo panel, al abrir un desplegable se
+    // cierran sus hermanos, para no acumular varias secciones abiertas
+    // a la vez y evitar que la pantalla (sobre todo en celular) se
+    // sature de contenido.
+    function inicializarAcordeonDesplegables() {
+      document.querySelectorAll('.seccion-desplegable').forEach(det => {
+        det.addEventListener('toggle', function () {
+          if (!this.open) return;
+          const hermanos = this.parentElement.querySelectorAll(':scope > details.seccion-desplegable');
+          hermanos.forEach(h => { if (h !== this) h.open = false; });
+        });
+      });
+    }
+
+    function inicializarPinchZoomMapa() {
+      const wrapper = document.getElementById('mapaWrapper');
+      const grid = document.getElementById('mapaGrid');
+      if (!wrapper || !grid) return;
+
+      let pinchRectWrapper = null;
+      let pinchFrameId = null;
+      let pinchTouchesPendientes = null;
+
+      wrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          pinchActivo = true;
+          pinchDistanciaInicial = distanciaEntreToques(e.touches[0], e.touches[1]);
+          pinchZoomInicial = zoomMapaActual;
+          pinchRectWrapper = wrapper.getBoundingClientRect();
+          grid.classList.add('sin-transicion-zoom');
+        }
+      }, { passive: false });
+
+      wrapper.addEventListener('touchmove', (e) => {
+        if (!pinchActivo || e.touches.length !== 2) return;
+        e.preventDefault();
+
+        // Solo guardamos los toques más recientes; el trabajo pesado
+        // (calcular escala, mover scroll) se hace una sola vez por frame.
+        pinchTouchesPendientes = [e.touches[0], e.touches[1]];
+        if (pinchFrameId !== null) return;
+
+        pinchFrameId = requestAnimationFrame(() => {
+          pinchFrameId = null;
+          if (!pinchActivo || !pinchTouchesPendientes || !pinchRectWrapper) return;
+          const [t1, t2] = pinchTouchesPendientes;
+
+          const distanciaActual = distanciaEntreToques(t1, t2);
+          const ratio = distanciaActual / pinchDistanciaInicial;
+          let nuevoZoom = pinchZoomInicial * ratio;
+          nuevoZoom = Math.min(2, Math.max(0.4, Math.round(nuevoZoom * 100) / 100));
+
+          const medio = puntoMedioToques(t1, t2);
+
+          // Punto bajo los dedos, en coordenadas del contenido sin escalar.
+          const xContenido = (wrapper.scrollLeft + (medio.x - pinchRectWrapper.left)) / zoomMapaActual;
+          const yContenido = (wrapper.scrollTop + (medio.y - pinchRectWrapper.top)) / zoomMapaActual;
+
+          zoomMapaActual = nuevoZoom;
+          aplicarZoomMapa();
+
+          // Reubica el scroll para que ese mismo punto siga bajo los dedos.
+          wrapper.scrollLeft = xContenido * nuevoZoom - (medio.x - pinchRectWrapper.left);
+          wrapper.scrollTop = yContenido * nuevoZoom - (medio.y - pinchRectWrapper.top);
+        });
+      }, { passive: false });
+
+      const finalizarPinch = (e) => {
+        if (e.touches.length < 2) {
+          pinchActivo = false;
+          pinchRectWrapper = null;
+          pinchTouchesPendientes = null;
+          if (pinchFrameId !== null) {
+            cancelAnimationFrame(pinchFrameId);
+            pinchFrameId = null;
+          }
+          grid.classList.remove('sin-transicion-zoom');
+        }
+      };
+      wrapper.addEventListener('touchend', finalizarPinch);
+      wrapper.addEventListener('touchcancel', finalizarPinch);
+    }
+
+    const obtenerLetraFila = (index) => String.fromCharCode(65 + index);
+
+    function generarColorAleatorio() {
+      const letras = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letras[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    function importarDesdeExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      asegurarLibreriaExcel().then(() => {
+        procesarArchivoExcel(file);
+      }).catch(() => {
+        mostrarToast('No se pudo cargar el módulo de Excel. Revisa tu conexión e intenta de nuevo.', 'error');
+      }).finally(() => {
+        event.target.value = '';
+      });
+    }
+
+    function procesarArchivoExcel(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonFilas = XLSX.utils.sheet_to_json(worksheet);
+          let contadorAgregados = 0;
+          jsonFilas.forEach(row => {
+            const codigo = (row['Código'] || row['Codigo'] || row['CODIGO'] || row['codigo']
+              || row['Clave'] || row['CLAVE'] || row['clave'] || '').toString().trim().toUpperCase();
+            const desc = (row['Descripción'] || row['Descripcion'] || row['DESCRIPCION'] || row['descripcion']
+              || row['Producto'] || row['PRODUCTO'] || row['producto']
+              || row['Nombre'] || row['NOMBRE'] || row['nombre']
+              || row['Nombre del Producto'] || row['Nombre de Producto'] || '').toString().trim();
+            let color = (row['Color'] || row['COLOR'] || row['color'] || '').toString().trim();
+            if (codigo && !listaCodigos.some(c => c.id === codigo)) {
+              if (!/^#[0-9A-F]{6}$/i.test(color)) {
+                color = generarColorAleatorio();
+              }
+              listaCodigos.push({
+                id: codigo,
+                desc: desc,
+                color: color
+              });
+              contadorAgregados++;
+            }
+          });
+          guardarEnLocalStorage();
+          mostrarToast(`Proceso finalizado: se importaron ${contadorAgregados} registros.`, 'exito');
+          renderizarListaCodigos();
+          renderizarTablaInventario();
+          renderizarMapa();
+        } catch (error) {
+          mostrarToast('Error al procesar el Excel.', 'error');
+          console.error(error);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function prepararEdicionCodigo(idCodigo) {
+      const item = listaCodigos.find(c => c.id === idCodigo);
+      if (!item) return;
+
+      document.getElementById('nuevoCodigo').value = item.id;
+      document.getElementById('nuevaDesc').value = item.desc;
+      document.getElementById('nuevoColor').value = item.color;
+
+      codigoEditandoId = item.id;
+
+      const btnCrear = document.getElementById('btnCrearActualizar');
+      btnCrear.textContent = '💾 Actualizar Registro';
+      btnCrear.style.backgroundColor = '#ffc107';
+      btnCrear.style.color = '#212529';
+      
+      const btnMateriales = document.querySelectorAll('.btn-tab')[1];
+      cambiarPestaña('tab-materiales', btnMateriales);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function restaurarFormularioCreacion() {
+      codigoEditandoId = null;
+      document.getElementById('nuevoCodigo').value = '';
+      document.getElementById('nuevaDesc').value = '';
+      document.getElementById('nuevoColor').value = '#007bff';
+      const btnCrear = document.getElementById('btnCrearActualizar');
+      btnCrear.textContent = '➕ Crear Registro';
+      btnCrear.style.backgroundColor = '';
+      btnCrear.style.color = '';
+    }
+
+    function guardarOActualizarCodigo() {
+      const codigoInput = document.getElementById('nuevoCodigo').value.trim().toUpperCase();
+      const descInput = document.getElementById('nuevaDesc').value.trim();
+      const colorInput = document.getElementById('nuevoColor').value;
+
+      if (!codigoInput) {
+        mostrarToast('Por favor, ingresa un código.', 'aviso');
+        return;
+      }
+
+      if (codigoEditandoId !== null) {
+        const item = listaCodigos.find(c => c.id === codigoEditandoId);
+        if (item) {
+          if (codigoInput !== codigoEditandoId && listaCodigos.some(c => c.id === codigoInput)) {
+            mostrarToast('Ya existe otro registro con ese código.', 'error');
+            return;
+          }
+
+          const viejoId = item.id;
+          item.id = codigoInput;
+          item.desc = descInput;
+          item.color = colorInput;
+
+          if (viejoId !== codigoInput) {
+            for (let f = 0; f < totalFilas; f++) {
+              for (let c = 0; c < totalColumnas; c++) {
+                datosMapa[f][c].items.forEach(it => {
+                  if (it.codigoId === viejoId) it.codigoId = codigoInput;
+                });
+              }
+            }
+            if (inventarioDatos[viejoId]) {
+              inventarioDatos[codigoInput] = inventarioDatos[viejoId];
+              delete inventarioDatos[viejoId];
+            }
+          }
+        }
+        restaurarFormularioCreacion();
+      } else {
+        if (listaCodigos.some(c => c.id === codigoInput)) {
+          mostrarToast('Este registro ya existe.', 'error');
+          return;
+        }
+        listaCodigos.push({
+          id: codigoInput,
+          desc: descInput,
+          color: colorInput
+        });
+        document.getElementById('nuevoCodigo').value = '';
+        document.getElementById('nuevaDesc').value = '';
+      }
+
+      guardarEnLocalStorage();
+      renderizarListaCodigos();
+      renderizarTablaInventario();
+      renderizarMapa();
+    }
+
+    function eliminarCodigo(idCodigo) {
+      if (idCodigo === 'SIN-CODIGO') {
+        mostrarToast('No se puede eliminar el código por defecto.', 'aviso');
+        return;
+      }
+      if (codigoEditandoId === idCodigo) {
+        restaurarFormularioCreacion();
+      }
+      listaCodigos = listaCodigos.filter(c => c.id !== idCodigo);
+      delete inventarioDatos[idCodigo];
+
+      guardarLayoutActivoEnMemoria();
+      [1, 2].forEach(n => {
+        const mapa = layoutsData[n].datosMapa;
+        if (!mapa) return;
+        mapa.forEach(fila => fila.forEach(celda => {
+          celda.items = celda.items.filter(it => it.codigoId !== idCodigo);
+        }));
+      });
+      cargarLayoutActivoDesdeMemoria();
+
+      guardarEnLocalStorage();
+      renderizarListaCodigos();
+      renderizarTablaInventario();
+      renderizarMapa();
+    }
+
+    // Borra TODOS los códigos/productos cargados (deja únicamente el código por
+    // defecto 'SIN-CODIGO', ya que el sistema lo usa internamente para marcar
+    // ubicaciones vacías). También limpia el inventario y cualquier producto
+    // asignado en el mapa que dependía de esos códigos.
+    async function borrarTodosLosCodigos() {
+      const passwordOk = await pedirPassword("Ingresa la contraseña para borrar todos los códigos:");
+      if (!passwordOk) return;
+
+      const confirmado = await mostrarConfirmacion(
+        'Esto borrará permanentemente TODOS los códigos y productos de la lista (y su inventario). Los productos ya colocados en el mapa que usaban esos códigos también se quitarán. Esta acción no se puede deshacer.',
+        { titulo: '¿Borrar todos los códigos?', icono: '🗑️', textoAceptar: 'Sí, borrar todo' }
+      );
+      if (!confirmado) return;
+
+      const idsABorrar = listaCodigos.filter(c => c.id !== 'SIN-CODIGO').map(c => c.id);
+
+      listaCodigos = listaCodigos.filter(c => c.id === 'SIN-CODIGO');
+      idsABorrar.forEach(id => delete inventarioDatos[id]);
+
+      guardarLayoutActivoEnMemoria();
+      [1, 2].forEach(n => {
+        const mapa = layoutsData[n].datosMapa;
+        if (!mapa) return;
+        mapa.forEach(fila => fila.forEach(celda => {
+          celda.items = celda.items.filter(it => it.codigoId === 'SIN-CODIGO');
+        }));
+      });
+      cargarLayoutActivoDesdeMemoria();
+
+      if (codigoEditandoId !== null && !listaCodigos.some(c => c.id === codigoEditandoId)) {
+        restaurarFormularioCreacion();
+      }
+
+      guardarEnLocalStorage();
+      renderizarListaCodigos();
+      renderizarTablaInventario();
+      renderizarMapa();
+      mostrarToast(`Se borraron ${idsABorrar.length} código(s).`, 'exito');
+    }
+
+    // Calcula, en un solo recorrido del mapa, el total de piezas de TODOS los códigos.
+    // Evita recorrer el mapa completo una vez por cada código (lo cual se sentía lento
+    // en el detalle de materiales/precio cada vez que se abría o se editaba una ubicación).
+    function construirMapaTotalesPorCodigo() {
+      const totales = {};
+      if (!datosMapa) return totales;
+      for (let f = 0; f < totalFilas; f++) {
+        for (let c = 0; c < totalColumnas; c++) {
+          datosMapa[f][c].items.forEach(it => {
+            if (esCodigoPasillo(it.codigoId)) return;
+            totales[it.codigoId] = (totales[it.codigoId] || 0) + (Number(it.cantidad) || 0);
+          });
+        }
+      }
+      return totales;
+    }
+
+    function calcularCantidadTotalCodigo(idCodigo) {
+      if (esCodigoPasillo(idCodigo)) return 'N/A';
+      let total = 0;
+      if (!datosMapa || datosMapa.length === 0) return 0;
+      for (let f = 0; f < totalFilas; f++) {
+        for (let c = 0; c < totalColumnas; c++) {
+          datosMapa[f][c].items.forEach(it => {
+            if (it.codigoId === idCodigo) {
+              total += Number(it.cantidad) || 0;
+            }
+          });
+        }
+      }
+      return total;
+    }
+
+    /* ============================================================
+       INVENTARIO GENERAL: INICIAL / ENTRADAS / SALIDAS / FINAL
+       ============================================================ */
+    // Devuelve (creando si hace falta) el registro de inventario de un código.
+    function obtenerInventarioCodigo(idCodigo) {
+      if (!inventarioDatos[idCodigo]) {
+        inventarioDatos[idCodigo] = { inicial: 0, entradas: 0, salidas: 0 };
+      }
+      return inventarioDatos[idCodigo];
+    }
+
+    function calcularInventarioFinal(idCodigo) {
+      const inv = obtenerInventarioCodigo(idCodigo);
+      return inv.inicial + inv.entradas - inv.salidas;
+    }
+
+    // Evita repintar la tabla de Inventario cuando esa pestaña ni siquiera se está viendo:
+    // se llama tras cada cambio del mapa, pero solo hace el trabajo si es visible.
+    // Al entrar a la pestaña (cambiarPestaña) igual se refresca, así que nunca se ve desactualizada.
+    function actualizarInventarioSiVisible() {
+      const tab = document.getElementById('tab-materiales');
+      if (tab && tab.classList.contains('active')) renderizarTablaInventario();
+    }
+
+    // Mismo criterio para la pestaña de Materiales: la lista de códigos no necesita
+    // repintarse en cada edición del mapa si esa pestaña no está siendo vista.
+    function actualizarListaCodigosSiVisible() {
+      const tab = document.getElementById('tab-materiales');
+      if (tab && tab.classList.contains('active')) renderizarListaCodigos();
+    }
+
+    // Recuerda el tamaño del almacén con el que ya se actualizaron los selectores
+    // de fila/columna, para no reconstruirlos si el tamaño no cambió.
+    const dimsCacheSelectores = { filas: -1, columnas: -1 };
+
+    // Refleja en el Inventario General (Inicial/Entradas/Salidas) los cambios
+    // hechos directamente en el mapa: agregar producto = entrada, quitar = salida.
+    // Los movimientos entre ubicaciones (mover) no alteran el total, así que no pasan por aquí.
+    function registrarCambioInventarioPorMapa(idCodigo, delta) {
+      if (!idCodigo || !delta || esCodigoPasillo(idCodigo)) return;
+      const inv = obtenerInventarioCodigo(idCodigo);
+      if (delta > 0) {
+        inv.entradas += delta;
+      } else {
+        inv.salidas += Math.abs(delta);
+      }
+    }
+
+    // Reconciliación manual: para todo lo que ya estaba puesto en el mapa ANTES
+    // de que el inventario se empezara a sincronizar solo. Ajusta entradas/salidas
+    // (nunca el inicial que capturaste a mano) para que el inventario final de
+    // cada código coincida con el total que hoy tiene en el mapa.
+    function sincronizarInventarioConMapa() {
+      const totales = construirMapaTotalesPorCodigo();
+      let codigosAjustados = 0;
+
+      listaCodigos.forEach(item => {
+        if (esCodigoPasillo(item.id)) return;
+        const totalEnMapa = totales[item.id] || 0;
+        const finalActual = calcularInventarioFinal(item.id);
+        const diferencia = totalEnMapa - finalActual;
+        if (diferencia !== 0) {
+          registrarCambioInventarioPorMapa(item.id, diferencia);
+          codigosAjustados++;
+        }
+      });
+
+      guardarEnLocalStorage();
+      renderizarTablaInventario();
+
+      mostrarToast(
+        codigosAjustados > 0
+          ? `Inventario sincronizado: ${codigosAjustados} código(s) ajustado(s) para coincidir con el mapa.`
+          : 'El inventario ya estaba sincronizado con el mapa.',
+        'exito'
+      );
+    }
+
+    function renderizarTablaInventario() {
+      const tbody = document.getElementById('tablaInventarioBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const inputBusqueda = document.getElementById('buscarCodigoInventario');
+      const filtro = inputBusqueda ? inputBusqueda.value.trim().toLowerCase() : '';
+
+      const codigosValidos = listaCodigos.filter(item => !esCodigoPasillo(item.id));
+      const codigosFiltrados = filtro
+        ? codigosValidos.filter(item =>
+            item.id.toLowerCase().includes(filtro) ||
+            (item.desc || '').toLowerCase().includes(filtro))
+        : codigosValidos;
+
+      if (codigosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">Sin resultados</td></tr>`;
+        return;
+      }
+
+      codigosFiltrados.forEach(item => {
+        const inv = obtenerInventarioCodigo(item.id);
+        const final = calcularInventarioFinal(item.id);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.id}</strong></td>
+          <td>${item.desc || '<span style="color:#aaa; font-style:italic;">Sin descripción</span>'}</td>
+          <td>${inv.inicial}</td>
+          <td style="color: var(--success-color); font-weight: 600;">+${inv.entradas}</td>
+          <td style="color: var(--danger-color); font-weight: 600;">-${inv.salidas}</td>
+          <td><strong>${final}</strong> pzas</td>
+          <td style="text-align: center; white-space: nowrap;">
+            <button class="btn-tab" style="padding: 4px 8px; font-size: 12px;" onclick="editarInventarioInicial('${item.id}')">✏️ Inicial</button>
+            <button class="btn-excel" style="padding: 4px 8px; font-size: 12px;" onclick="registrarEntradaInventario('${item.id}')">➕ Entrada</button>
+            <button class="btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="registrarSalidaInventario('${item.id}')">➖ Salida</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function editarInventarioInicial(idCodigo) {
+      const inv = obtenerInventarioCodigo(idCodigo);
+      const valor = await pedirTexto(`Cantidad de inventario inicial para "${idCodigo}":`, {
+        titulo: 'Editar inventario inicial',
+        icono: '✏️',
+        valorInicial: String(inv.inicial),
+        placeholder: 'Ej: 100',
+        mensajeError: 'Ingresa un número válido (0 o mayor).',
+        validar: (valor) => valor !== '' && !isNaN(valor) && Number(valor) >= 0
+      });
+      if (valor === null) return;
+
+      inv.inicial = parseInt(valor);
+      guardarEnLocalStorage();
+      renderizarTablaInventario();
+      mostrarToast(`Inventario inicial de "${idCodigo}" actualizado a ${inv.inicial} pzas.`, 'exito');
+    }
+
+    async function registrarEntradaInventario(idCodigo) {
+      const cantidad = await pedirTexto(`¿Cuántas piezas de "${idCodigo}" entraron?`, {
+        titulo: 'Registrar entrada',
+        icono: '➕',
+        placeholder: 'Ej: 20',
+        mensajeError: 'Ingresa una cantidad válida mayor a 0.',
+        validar: (valor) => valor !== '' && !isNaN(valor) && Number(valor) > 0
+      });
+      if (cantidad === null) return;
+
+      const inv = obtenerInventarioCodigo(idCodigo);
+      inv.entradas += parseInt(cantidad);
+      guardarEnLocalStorage();
+      renderizarTablaInventario();
+      mostrarToast(`Entrada registrada: +${cantidad} pzas de "${idCodigo}". Inv. final: ${calcularInventarioFinal(idCodigo)}.`, 'exito');
+    }
+
+    async function registrarSalidaInventario(idCodigo) {
+      const inv = obtenerInventarioCodigo(idCodigo);
+      const disponible = calcularInventarioFinal(idCodigo);
+
+      const cantidad = await pedirTexto(`¿Cuántas piezas de "${idCodigo}" salieron? (Disponible: ${disponible})`, {
+        titulo: 'Registrar salida',
+        icono: '➖',
+        placeholder: 'Ej: 10',
+        mensajeError: `Ingresa una cantidad válida entre 1 y ${disponible}.`,
+        validar: (valor) => valor !== '' && !isNaN(valor) && Number(valor) > 0 && Number(valor) <= disponible
+      });
+      if (cantidad === null) return;
+
+      inv.salidas += parseInt(cantidad);
+      guardarEnLocalStorage();
+      renderizarTablaInventario();
+      mostrarToast(`Salida registrada: -${cantidad} pzas de "${idCodigo}". Inv. final: ${calcularInventarioFinal(idCodigo)}.`, 'exito');
+    }
+
+    function renderizarListaCodigos() {
+      const tbody = document.getElementById('tablaCodigosBody');
+      tbody.innerHTML = '';
+
+      const inputBusqueda = document.getElementById('buscarCodigoMateriales');
+      const filtro = inputBusqueda ? inputBusqueda.value.trim().toLowerCase() : '';
+      const codigosFiltrados = filtro
+        ? listaCodigos.filter(item =>
+            item.id.toLowerCase().includes(filtro) ||
+            (item.desc || '').toLowerCase().includes(filtro))
+        : listaCodigos;
+
+      if (codigosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">Sin resultados para "${filtro}"</td></tr>`;
+        return;
+      }
+
+      const totalesPorCodigo = construirMapaTotalesPorCodigo();
+      codigosFiltrados.forEach(item => {
+        const cantidadTotal = esCodigoPasillo(item.id) ? 'N/A' : (totalesPorCodigo[item.id] || 0);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="color-dot" style="background-color: ${item.color};"></span><strong>${item.id}</strong></td>
+          <td>${item.desc || '<span style="color:#aaa; font-style:italic;">Sin descripción</span>'}</td>
+          <td><strong>${cantidadTotal}</strong> ${esCodigoPasillo(item.id) ? '' : 'pzas'}</td>
+          <td style="text-align: center;">
+            <button class="btn-warning" onclick="prepararEdicionCodigo('${item.id}')">Editar</button>
+            ${(item.id !== 'SIN-CODIGO') ? `<button class="btn-danger" onclick="eliminarCodigo('${item.id}')" style="margin-left: 5px;">Eliminar</button>` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function actualizarSelectFilasZona() {
+      const select = document.getElementById('selectFilaZona');
+      if (!select) return;
+      const valActual = select.value;
+      select.innerHTML = '';
+      for (let f = 0; f < totalFilas; f++) {
+        const letra = obtenerLetraFila(f);
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = `Fila ${letra}`;
+        select.appendChild(opt);
+      }
+      if (valActual !== "") select.value = valActual;
+      renderizarResumenZonas();
+    }
+
+    function actualizarSelectoresEstructura() {
+      const selectFila = document.getElementById('selectBorrarFila');
+      const selectCol = document.getElementById('selectBorrarColumna');
+      const selectInsertarFila = document.getElementById('selectInsertarAntesDe');
+      const selectInsertarCol = document.getElementById('selectInsertarColAntesDe');
+      
+      selectFila.innerHTML = '';
+      selectCol.innerHTML = '';
+      selectInsertarFila.innerHTML = '';
+      selectInsertarCol.innerHTML = '';
+
+      for (let f = 0; f < totalFilas; f++) {
+        const letra = obtenerLetraFila(f);
+        
+        const optBorrar = document.createElement('option');
+        optBorrar.value = f;
+        optBorrar.textContent = `Fila ${letra}`;
+        selectFila.appendChild(optBorrar);
+
+        const optInsertar = document.createElement('option');
+        optInsertar.value = f;
+        optInsertar.textContent = `Fila ${letra}`;
+        selectInsertarFila.appendChild(optInsertar);
+      }
+
+      for (let c = 0; c < totalColumnas; c++) {
+        const optBorrar = document.createElement('option');
+        optBorrar.value = c;
+        optBorrar.textContent = `Columna ${c + 1}`;
+        selectCol.appendChild(optBorrar);
+
+        const optInsertar = document.createElement('option');
+        optInsertar.value = c;
+        optInsertar.textContent = `Columna ${c + 1}`;
+        selectInsertarCol.appendChild(optInsertar);
+      }
+    }
+
+    function guardarEtiquetaFila() {
+      const filaIdx = parseInt(document.getElementById('selectFilaZona').value);
+      const etiqueta = document.getElementById('inputEtiquetaFila').value.trim();
+      const color = document.getElementById('colorEtiquetaFila').value;
+
+      if (!etiqueta) {
+        mostrarToast('Por favor ingresa una etiqueta o descripción para la fila.', 'aviso');
+        return;
+      }
+
+      etiquetasFilas[filaIdx] = { texto: etiqueta, color: color };
+      guardarEnLocalStorage();
+      actualizarSelectFilasZona();
+      renderizarMapa();
+      document.getElementById('inputEtiquetaFila').value = '';
+      mostrarToast(`Etiqueta guardada para la Fila ${obtenerLetraFila(filaIdx)}.`, 'exito');
+    }
+
+    function limpiarEtiquetaFila() {
+      const filaIdx = parseInt(document.getElementById('selectFilaZona').value);
+      if (etiquetasFilas[filaIdx]) {
+        delete etiquetasFilas[filaIdx];
+        guardarEnLocalStorage();
+        actualizarSelectFilasZona();
+        renderizarMapa();
+        mostrarToast(`Se eliminó la etiqueta de la Fila ${obtenerLetraFila(filaIdx)}.`, 'exito');
+      }
+    }
+
+    function renderizarResumenZonas() {
+      const div = document.getElementById('listaZonasActivas');
+      if (!div) return;
+      let html = '<strong>Zonas / Filas Delimitadas Activas:</strong> ';
+      const keys = Object.keys(etiquetasFilas);
+      if (keys.length === 0) {
+        html += '<span style="color: #888;">Ninguna definida.</span>';
+      } else {
+        let itemsHTML = keys.map(f => {
+          const info = etiquetasFilas[f];
+          return `<span style="display:inline-block; margin-right: 15px; background: #fff; padding: 3px 8px; border-radius: 4px; border: 1px solid #ddd;"><span class="color-dot" style="background-color: ${info.color};"></span><strong>Fila ${obtenerLetraFila(f)}:</strong> ${info.texto}</span>`;
+        }).join('');
+        html += itemsHTML;
+      }
+      div.innerHTML = html;
+    }
+
+    function crearObjetoCelda(f, c) {
+      return {
+        idUbicacion: `${obtenerLetraFila(f)}${c + 1}`,
+        items: []
+      };
+    }
+
+    function inicializarEstructuraMapa() {
+      datosMapa = [];
+      for (let f = 0; f < totalFilas; f++) {
+        let fila = [];
+        for (let c = 0; c < totalColumnas; c++) {
+          fila.push(crearObjetoCelda(f, c));
+        }
+        datosMapa.push(fila);
+      }
+    }
+
+    function reestructurarIdentificadoresUbicacion() {
+      for (let f = 0; f < totalFilas; f++) {
+        for (let c = 0; c < totalColumnas; c++) {
+          datosMapa[f][c].idUbicacion = `${obtenerLetraFila(f)}${c + 1}`;
+        }
+      }
+    }
+
+    function actualizarSelectImpresion() {
+      const selectImp = document.getElementById('selectFilaImprimir');
+      const valorActual = selectImp.value;
+      selectImp.innerHTML = '';
+      for (let f = 0; f < totalFilas; f++) {
+        const letra = obtenerLetraFila(f);
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = `Fila ${letra}`;
+        selectImp.appendChild(opt);
+      }
+      selectImp.value = valorActual;
+    }
+
+    function cambiarModoImpresion() {
+      const tipo = document.getElementById('selectTipoImpresion').value;
+      document.getElementById('divFilaUnica').style.display = (tipo === 'fila') ? 'flex' : 'none';
+      document.getElementById('divRangoImpresion').style.display = (tipo === 'rango') ? 'flex' : 'none';
+    }
+
+    // Calcula, en un solo recorrido, cuántos espacios utilizables hay y cuántos están ocupados.
+    function calcularOcupacion() {
+      let totalEspaciosUsables = 0;
+      let espaciosOcupados = 0;
+      for (let f = 0; f < totalFilas; f++) {
+        for (let c = 0; c < totalColumnas; c++) {
+          const items = datosMapa[f][c].items || [];
+          const esPasillo = items.length > 0 && esCodigoPasillo(items[0].codigoId);
+          if (!esPasillo) {
+            totalEspaciosUsables++;
+            if (items.length > 0) espaciosOcupados++;
+          }
+        }
+      }
+      return { totalEspaciosUsables, espaciosOcupados };
+    }
+
+    function actualizarEtiquetaOcupacion() {
+      const { totalEspaciosUsables, espaciosOcupados } = calcularOcupacion();
+      let porcentaje = totalEspaciosUsables > 0 ? ((espaciosOcupados / totalEspaciosUsables) * 100).toFixed(1) : 0;
+      document.getElementById('lblPorcentajeOcupacion').textContent = `${porcentaje}% Ocupado`;
+      document.getElementById('lblDetalleOcupacion').textContent = `(${espaciosOcupados} de ${totalEspaciosUsables} racks asignados)`;
+    }
+
+    // Construye el <div> de una celda individual del mapa (una sola ubicación).
+    // Se usa tanto para pintar el mapa completo como para refrescar una sola celda
+    // sin tener que reconstruir todo el layout.
+    function construirDivCelda(f, c) {
+      const showUbi = document.getElementById('chkUbicacion').checked;
+      const showCod = document.getElementById('chkCodigo').checked;
+      const showDesc = document.getElementById('chkDesc').checked;
+      const showLote = document.getElementById('chkLote').checked;
+      const showCant = document.getElementById('chkCantidad').checked;
+
+      const celda = datosMapa[f][c];
+      const items = celda.items || [];
+      const esPasillo = items.length > 0 && esCodigoPasillo(items[0].codigoId);
+      const esMixto = items.length > 1;
+
+      const divCelda = document.createElement('div');
+      let clases = 'celda';
+      if (esPasillo) clases += ' es-pasillo';
+      else if (esMixto) clases += ' es-mixto';
+      else if (items.length === 0) clases += ' es-vacio';
+
+      if (modoSeleccionMultiple) clases += ' celda-seleccionable';
+      if (celdasSeleccionadas.has(`${f}-${c}`)) clases += ' celda-seleccionada';
+
+      divCelda.className = clases;
+      divCelda.dataset.row = f;
+      divCelda.dataset.col = c;
+
+      if (!esPasillo && !esMixto && items.length === 1) {
+        const conf = listaCodigos.find(i => i.id === items[0].codigoId);
+        divCelda.style.backgroundColor = conf ? conf.color : '#6c757d';
+      }
+
+      divCelda.onclick = () => modoSeleccionMultiple ? alternarSeleccionCelda(f, c) : abrirModal(f, c);
+
+      let contenidoHTML = '';
+      if (showUbi) contenidoHTML += `<div class="ubicacion">${celda.idUbicacion}</div>`;
+
+      if (esPasillo) {
+        const conf = listaCodigos.find(i => i.id === items[0].codigoId);
+        if (showCod) contenidoHTML += `<div class="codigo-tag">${items[0].codigoId}</div>`;
+        if (showDesc && conf && conf.desc) contenidoHTML += `<div class="desc-tag">${conf.desc}</div>`;
+      } else if (items.length === 0) {
+        contenidoHTML += `<div class="badge-disponible">DISPONIBLE</div>`;
+      } else if (esMixto) {
+        let totalCant = items.reduce((acc, curr) => acc + (Number(curr.cantidad) || 0), 0);
+        let listaCodigosMixto = items.map(it => it.codigoId).join(', ');
+
+        contenidoHTML += `<div class="badge-mixto">📦 MIXTO (${items.length})</div>`;
+        if (showCod) contenidoHTML += `<div class="mixto-codigos-lista" title="${listaCodigosMixto}">Códs: ${listaCodigosMixto}</div>`;
+        if (showCant) contenidoHTML += `<div class="info">Total: ${totalCant} pzas</div>`;
+      } else {
+        const item = items[0];
+        const conf = listaCodigos.find(i => i.id === item.codigoId) || { desc: '' };
+        if (showCod) contenidoHTML += `<div class="codigo-tag">${item.codigoId}</div>`;
+        if (showDesc && conf.desc) contenidoHTML += `<div class="desc-tag">${conf.desc}</div>`;
+        if (showLote) contenidoHTML += `<div class="info">${item.producto ? 'Lote: ' + item.producto : 'S/L'}</div>`;
+        if (showCant) contenidoHTML += `<div class="info">Cant: ${item.cantidad}</div>`;
+      }
+
+      divCelda.innerHTML = contenidoHTML;
+      return divCelda;
+    }
+
+    // Refresca UNA sola celda del mapa ya pintado, sin reconstruir todo el layout.
+    // Esto es lo que hace que agregar/quitar/editar un producto en una ubicación
+    // (y luego cerrar esa pantalla) se sienta instantáneo, incluso en mapas grandes.
+    function actualizarCeldaEnDOM(f, c) {
+      const grid = document.getElementById('mapaGrid');
+      const nodoExistente = grid.querySelector(`.celda[data-row="${f}"][data-col="${c}"]`);
+      if (!nodoExistente) {
+        // Si por alguna razón la celda no está pintada todavía, se hace un render completo.
+        renderizarMapa();
+        return;
+      }
+      nodoExistente.replaceWith(construirDivCelda(f, c));
+      actualizarEtiquetaOcupacion();
+      renderizarListaCodigos();
+      const textoBuscado = document.getElementById('inputBuscadorMapa').value;
+      if (textoBuscado) buscarProductoEnMapa();
+    }
+
+    function renderizarMapa() {
+      const grid = document.getElementById('mapaGrid');
+      grid.innerHTML = '';
+      
+      grid.style.gridTemplateColumns = `40px repeat(${totalColumnas}, 140px)`;
+      
+      const showUbi = document.getElementById('chkUbicacion').checked;
+      const showCod = document.getElementById('chkCodigo').checked;
+      const showDesc = document.getElementById('chkDesc').checked;
+      const showLote = document.getElementById('chkLote').checked;
+      const showCant = document.getElementById('chkCantidad').checked;
+
+      let totalEspaciosUsables = 0;
+      let espaciosOcupados = 0;
+
+      const corner = document.createElement('div');
+      corner.className = 'encabezado-columna encabezado-esquina';
+      corner.textContent = '';
+      grid.appendChild(corner);
+
+      for (let c = 0; c < totalColumnas; c++) {
+        const colHeader = document.createElement('div');
+        colHeader.className = 'encabezado-columna';
+        colHeader.textContent = c + 1;
+        grid.appendChild(colHeader);
+      }
+
+      for (let f = 0; f < totalFilas; f++) {
+        if (etiquetasFilas[f]) {
+          const infoZona = etiquetasFilas[f];
+          const bannerFila = document.createElement('div');
+          bannerFila.style.gridColumn = `1 / span ${totalColumnas + 1}`;
+          bannerFila.style.backgroundColor = infoZona.color;
+          bannerFila.style.color = '#fff';
+          bannerFila.style.padding = '6px 12px';
+          bannerFila.style.borderRadius = '6px';
+          bannerFila.style.fontWeight = 'bold';
+          bannerFila.style.fontSize = '13px';
+          bannerFila.style.display = 'flex';
+          bannerFila.style.alignItems = 'center';
+          bannerFila.style.gap = '8px';
+          bannerFila.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+          bannerFila.innerHTML = `<span>📌 Zona / Fila ${obtenerLetraFila(f)}:</span> <span style="background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 4px;">${infoZona.texto}</span>`;
+          grid.appendChild(bannerFila);
+        }
+
+        const rowHeader = document.createElement('div');
+        rowHeader.className = 'encabezado-fila';
+        rowHeader.textContent = obtenerLetraFila(f);
+        grid.appendChild(rowHeader);
+
+        for (let c = 0; c < totalColumnas; c++) {
+          const celda = datosMapa[f][c];
+          const items = celda.items || [];
+          const esPasillo = items.length > 0 && esCodigoPasillo(items[0].codigoId);
+          const esMixto = items.length > 1;
+
+          if (!esPasillo) {
+            totalEspaciosUsables++;
+            if (items.length > 0) espaciosOcupados++;
+          }
+
+          const divCelda = document.createElement('div');
+          let clases = 'celda';
+          if (esPasillo) clases += ' es-pasillo';
+          else if (esMixto) clases += ' es-mixto';
+          else if (items.length === 0) clases += ' es-vacio';
+          
+          if (modoSeleccionMultiple) clases += ' celda-seleccionable';
+          if (celdasSeleccionadas.has(`${f}-${c}`)) clases += ' celda-seleccionada';
+
+          divCelda.className = clases;
+          divCelda.dataset.row = f;
+          divCelda.dataset.col = c;
+          
+          if (!esPasillo && !esMixto && items.length === 1) {
+            const conf = listaCodigos.find(i => i.id === items[0].codigoId);
+            divCelda.style.backgroundColor = conf ? conf.color : '#6c757d';
+          }
+          
+          divCelda.onclick = () => modoSeleccionMultiple ? alternarSeleccionCelda(f, c) : abrirModal(f, c);
+
+          let contenidoHTML = '';
+          if (showUbi) contenidoHTML += `<div class="ubicacion">${celda.idUbicacion}</div>`;
+          
+          if (esPasillo) {
+            const conf = listaCodigos.find(i => i.id === items[0].codigoId);
+            if (showCod) contenidoHTML += `<div class="codigo-tag">${items[0].codigoId}</div>`;
+            if (showDesc && conf && conf.desc) contenidoHTML += `<div class="desc-tag">${conf.desc}</div>`;
+          } else if (items.length === 0) {
+            contenidoHTML += `<div class="badge-disponible">DISPONIBLE</div>`;
+          } else if (esMixto) {
+            let totalCant = items.reduce((acc, curr) => acc + (Number(curr.cantidad) || 0), 0);
+            let listaCodigosMixto = items.map(it => it.codigoId).join(', ');
+            
+            contenidoHTML += `<div class="badge-mixto">📦 MIXTO (${items.length})</div>`;
+            if (showCod) contenidoHTML += `<div class="mixto-codigos-lista" title="${listaCodigosMixto}">Códs: ${listaCodigosMixto}</div>`;
+            if (showCant) contenidoHTML += `<div class="info">Total: ${totalCant} pzas</div>`;
+          } else {
+            const item = items[0];
+            const conf = listaCodigos.find(i => i.id === item.codigoId) || { desc: '' };
+            if (showCod) contenidoHTML += `<div class="codigo-tag">${item.codigoId}</div>`;
+            if (showDesc && conf.desc) contenidoHTML += `<div class="desc-tag">${conf.desc}</div>`;
+            if (showLote) contenidoHTML += `<div class="info">${item.producto ? 'Lote: ' + item.producto : 'S/L'}</div>`;
+            if (showCant) contenidoHTML += `<div class="info">Cant: ${item.cantidad}</div>`;
+          }
+
+          divCelda.innerHTML = contenidoHTML;
+          grid.appendChild(divCelda);
+        }
+      }
+
+      let porcentaje = totalEspaciosUsables > 0 ? ((espaciosOcupados / totalEspaciosUsables) * 100).toFixed(1) : 0;
+      document.getElementById('lblPorcentajeOcupacion').textContent = `${porcentaje}% Ocupado`;
+      document.getElementById('lblDetalleOcupacion').textContent = `(${espaciosOcupados} de ${totalEspaciosUsables} racks asignados)`;
+
+      // Los selectores de fila/columna solo dependen del TAMAÑO del almacén, no de qué
+      // producto tiene cada celda: reconstruirlos en cada edición de producto era trabajo
+      // de sobra. Se actualizan aquí solo si el tamaño realmente cambió.
+      if (dimsCacheSelectores.filas !== totalFilas || dimsCacheSelectores.columnas !== totalColumnas) {
+        dimsCacheSelectores.filas = totalFilas;
+        dimsCacheSelectores.columnas = totalColumnas;
+        actualizarSelectImpresion();
+        actualizarSelectoresEstructura();
+      }
+      actualizarSelectFilasZona();
+      actualizarListaCodigosSiVisible();
+      
+      const textoBuscado = document.getElementById('inputBuscadorMapa').value;
+      if (textoBuscado) {
+        buscarProductoEnMapa();
+      }
+
+      aplicarZoomMapa();
+    }
+
+    function buscarProductoEnMapa() {
+      const query = document.getElementById('inputBuscadorMapa').value.toLowerCase().trim();
+      const todasLasCeldas = document.querySelectorAll('.celda');
+
+      if (!query) {
+        limpiarBusquedaMapa();
+        return;
+      }
+
+      todasLasCeldas.forEach(divCelda => {
+        const f = parseInt(divCelda.dataset.row);
+        const c = parseInt(divCelda.dataset.col);
+        const celdaDatos = datosMapa[f][c];
+        
+        let coincide = false;
+        
+        if (celdaDatos.idUbicacion.toLowerCase().includes(query)) {
+          coincide = true;
+        }
+
+        celdaDatos.items.forEach(it => {
+          if (it.codigoId.toLowerCase().includes(query) || (it.producto && it.producto.toLowerCase().includes(query))) {
+            coincide = true;
+          }
+          const conf = listaCodigos.find(item => item.id === it.codigoId);
+          if (conf && conf.desc && conf.desc.toLowerCase().includes(query)) {
+            coincide = true;
+          }
+        });
+
+        if (coincide) {
+          divCelda.classList.add('resaltado-busqueda');
+          divCelda.classList.remove('atenuado-busqueda');
+        } else {
+          divCelda.classList.remove('resaltado-busqueda');
+          divCelda.classList.add('atenuado-busqueda');
+        }
+      });
+    }
+
+    function limpiarBusquedaMapa() {
+      document.getElementById('inputBuscadorMapa').value = '';
+      const todasLasCeldas = document.querySelectorAll('.celda');
+      todasLasCeldas.forEach(divCelda => {
+        divCelda.classList.remove('resaltado-busqueda');
+        divCelda.classList.remove('atenuado-busqueda');
+      });
+    }
+
+    function agregarFila() {
+      const nuevaFila = [];
+      for (let c = 0; c < totalColumnas; c++) {
+        nuevaFila.push(crearObjetoCelda(totalFilas, c));
+      }
+      datosMapa.push(nuevaFila);
+      totalFilas++;
+      guardarEnLocalStorage();
+      renderizarMapa();
+    }
+
+    function insertarFilaEnMedio() {
+      const idx = parseInt(document.getElementById('selectInsertarAntesDe').value);
+      if (isNaN(idx)) return;
+
+      const nuevaFila = [];
+      for (let c = 0; c < totalColumnas; c++) {
+        nuevaFila.push({
+          idUbicacion: '',
+          items: []
+        });
+      }
+
+      datosMapa.splice(idx, 0, nuevaFila);
+      totalFilas++;
+
+      let nuevasEtiquetas = {};
+      Object.keys(etiquetasFilas).forEach(fKey => {
+        let fNum = parseInt(fKey);
+        if (fNum < idx) {
+          nuevasEtiquetas[fNum] = etiquetasFilas[fNum];
+        } else {
+          nuevasEtiquetas[fNum + 1] = etiquetasFilas[fNum];
+        }
+      });
+      etiquetasFilas = nuevasEtiquetas;
+
+      reestructurarIdentificadoresUbicacion();
+      guardarEnLocalStorage();
+      renderizarMapa();
+      mostrarToast(`Se insertó una nueva fila en la posición de la Fila ${obtenerLetraFila(idx)}.`, 'exito');
+    }
+
+    async function eliminarUltimaFila() {
+      if (totalFilas <= 1) {
+        mostrarToast('Debe haber al menos una fila en el almacén.', 'aviso');
+        return;
+      }
+      const confirmado = await mostrarConfirmacion(`¿Estás seguro de eliminar la última fila (${obtenerLetraFila(totalFilas - 1)})?`, { titulo: 'Eliminar fila', icono: '🗑️' });
+      if (confirmado) {
+        delete etiquetasFilas[totalFilas - 1];
+        datosMapa.pop();
+        totalFilas--;
+        guardarEnLocalStorage();
+        renderizarMapa();
+      }
+    }
+
+    async function borrarFilaEspecifica() {
+      if (totalFilas <= 1) {
+        mostrarToast('Debe haber al menos una fila en el almacén.', 'aviso');
+        return;
+      }
+      const idx = parseInt(document.getElementById('selectBorrarFila').value);
+      const confirmado = await mostrarConfirmacion(`¿Estás seguro de eliminar por completo la Fila ${obtenerLetraFila(idx)}? Se perderán los productos guardados en ella.`, { titulo: 'Eliminar fila', icono: '🗑️' });
+      if (confirmado) {
+        datosMapa.splice(idx, 1);
+        totalFilas--;
+        
+        let nuevasEtiquetas = {};
+        Object.keys(etiquetasFilas).forEach(fKey => {
+          let fNum = parseInt(fKey);
+          if (fNum < idx) {
+            nuevasEtiquetas[fNum] = etiquetasFilas[fNum];
+          } else if (fNum > idx) {
+            nuevasEtiquetas[fNum - 1] = etiquetasFilas[fNum];
+          }
+        });
+        etiquetasFilas = nuevasEtiquetas;
+
+        reestructurarIdentificadoresUbicacion();
+
+        guardarEnLocalStorage();
+        renderizarMapa();
+        mostrarToast('Fila eliminada y ubicaciones actualizadas correctamente.', 'exito');
+      }
+    }
+
+    function agregarColumna() {
+      for (let f = 0; f < totalFilas; f++) {
+        datosMapa[f].push(crearObjetoCelda(f, totalColumnas));
+      }
+      totalColumnas++;
+      guardarEnLocalStorage();
+      renderizarMapa();
+    }
+
+    function insertarColumnaEnMedio() {
+      const idx = parseInt(document.getElementById('selectInsertarColAntesDe').value);
+      if (isNaN(idx)) return;
+
+      for (let f = 0; f < totalFilas; f++) {
+        datosMapa[f].splice(idx, 0, {
+          idUbicacion: '',
+          items: []
+        });
+      }
+
+      totalColumnas++;
+      reestructurarIdentificadoresUbicacion();
+      guardarEnLocalStorage();
+      renderizarMapa();
+      mostrarToast(`Se insertó una nueva columna en la posición de la Columna ${idx + 1}.`, 'exito');
+    }
+
+    async function eliminarUltimaColumna() {
+      if (totalColumnas <= 1) {
+        mostrarToast('Debe haber al menos una columna en el almacén.', 'aviso');
+        return;
+      }
+      const confirmado = await mostrarConfirmacion(`¿Estás seguro de eliminar la última columna (${totalColumnas})?`, { titulo: 'Eliminar columna', icono: '🗑️' });
+      if (confirmado) {
+        for (let f = 0; f < totalFilas; f++) {
+          datosMapa[f].pop();
+        }
+        totalColumnas--;
+        guardarEnLocalStorage();
+        renderizarMapa();
+      }
+    }
+
+    async function borrarColumnaEspecifica() {
+      if (totalColumnas <= 1) {
+        mostrarToast('Debe haber al menos una columna en el almacén.', 'aviso');
+        return;
+      }
+      const idx = parseInt(document.getElementById('selectBorrarColumna').value);
+      const confirmado = await mostrarConfirmacion(`¿Estás seguro de eliminar la Columna ${idx + 1}? Se perderán los productos guardados en ella.`, { titulo: 'Eliminar columna', icono: '🗑️' });
+      if (confirmado) {
+        for (let f = 0; f < totalFilas; f++) {
+          datosMapa[f].splice(idx, 1);
+        }
+        totalColumnas--;
+        
+        reestructurarIdentificadoresUbicacion();
+
+        guardarEnLocalStorage();
+        renderizarMapa();
+        mostrarToast('Columna eliminada y ubicaciones reorganizadas.', 'exito');
+      }
+    }
+
+    function parsearCoordenada(str) {
+      if (!str) return null;
+      str = str.trim().toUpperCase();
+      const match = str.match(/^([A-Z]+)(\d+)$/);
+      if (!match) return null;
+      const letrasFila = match[1];
+      const numCol = parseInt(match[2], 10) - 1;
+      
+      let rowIndex = 0;
+      for (let i = 0; i < letrasFila.length; i++) {
+        rowIndex = rowIndex * 26 + (letrasFila.charCodeAt(i) - 64);
+      }
+      rowIndex -= 1;
+      return { f: rowIndex, c: numCol };
+    }
+
+    function ejecutarImpresion() {
+      const ahora = new Date();
+      document.getElementById('printFecha').textContent = ahora.toLocaleDateString('es-MX');
+      document.getElementById('printHora').textContent = ahora.toLocaleTimeString('es-MX');
+      document.getElementById('printLayout').textContent = layoutsData[layoutActivo].nombre;
+
+      const tipo = document.getElementById('selectTipoImpresion').value;
+      const tamanoImp = document.getElementById('selectTamanoImpresion').value;
+      const mapaGrid = document.getElementById('mapaGrid');
+      
+      mapaGrid.className = `mapa-grid print-${tamanoImp}`;
+      document.documentElement.style.setProperty('--cols', totalColumnas);
+
+      const todasLasCeldas = document.querySelectorAll('.celda');
+      todasLasCeldas.forEach(celda => celda.classList.remove('fuera-de-rango'));
+
+      if (tipo === 'fila') {
+        const seleccionFila = parseInt(document.getElementById('selectFilaImprimir').value);
+        todasLasCeldas.forEach(celda => {
+          if (parseInt(celda.dataset.row) !== seleccionFila) celda.classList.add('fuera-de-rango');
+        });
+      } else if (tipo === 'rango') {
+        const desde = parsearCoordenada(document.getElementById('printDesde').value);
+        const hasta = parsearCoordenada(document.getElementById('printHasta').value);
+
+        if (!desde || !hasta) {
+          mostrarToast('Ingresa un rango válido (Ej: A1 a D7).', 'aviso');
+          return;
+        }
+
+        const minF = Math.min(desde.f, hasta.f), maxF = Math.max(desde.f, hasta.f);
+        const minC = Math.min(desde.c, hasta.c), maxC = Math.max(desde.c, hasta.c);
+
+        todasLasCeldas.forEach(celda => {
+          const f = parseInt(celda.dataset.row), c = parseInt(celda.dataset.col);
+          if (f < minF || f > maxF || c < minC || c > maxC) celda.classList.add('fuera-de-rango');
+        });
+      }
+
+      window.print();
+    }
+
+    function filtrarCodigosModal() {
+      const textoBusqueda = document.getElementById('buscarCodigoUbicacion').value.toLowerCase().trim();
+      const select = document.getElementById('selectCodigoUbicacion');
+      const valorSeleccionadoPrevio = select.value;
+      
+      const codigosOrdenados = [...listaCodigos].sort((a, b) => {
+        if (a.id === 'SIN-CODIGO') return -1;
+        if (b.id === 'SIN-CODIGO') return 1;
+        return a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      const codigosFiltrados = codigosOrdenados.filter(item => {
+        if (item.id === 'SIN-CODIGO') return false;
+        return item.id.toLowerCase().includes(textoBusqueda) || (item.desc && item.desc.toLowerCase().includes(textoBusqueda));
+      });
+
+      // Se arma en un fragmento en memoria y se inserta una sola vez,
+      // en vez de tocar el DOM del select en cada vuelta del ciclo.
+      const fragment = document.createDocumentFragment();
+      codigosFiltrados.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.desc ? `${item.id} - ${item.desc}` : `${item.id} (Sin descripción)`;
+        fragment.appendChild(option);
+      });
+      select.innerHTML = '';
+      select.appendChild(fragment);
+
+      if (codigosFiltrados.some(c => c.id === valorSeleccionadoPrevio)) {
+        select.value = valorSeleccionadoPrevio;
+      }
+    }
+
+    /* ============================================================
+       SELECCIÓN MÚLTIPLE DE CELDAS
+       ============================================================ */
+    let modoAsignacionMultiple = false; // true mientras el modal está en modo "asignar a selección"
+
+    function alternarModoSeleccion(forzarValor) {
+      modoSeleccionMultiple = typeof forzarValor === 'boolean' ? forzarValor : !modoSeleccionMultiple;
+      const btn = document.getElementById('btnModoSeleccion');
+      if (!modoSeleccionMultiple) {
+        celdasSeleccionadas.clear();
+        btn.textContent = '🧩 Activar selección múltiple';
+        btn.classList.remove('activo');
+      } else {
+        btn.textContent = '✕ Desactivar selección múltiple';
+        btn.classList.add('activo');
+        mostrarToast('Haz clic sobre las ubicaciones que quieras seleccionar.', 'info');
+      }
+      actualizarBarraSeleccion();
+      renderizarMapa();
+    }
+
+    function alternarSeleccionCelda(f, c) {
+      const clave = `${f}-${c}`;
+      if (celdasSeleccionadas.has(clave)) {
+        celdasSeleccionadas.delete(clave);
+      } else {
+        celdasSeleccionadas.add(clave);
+      }
+      actualizarBarraSeleccion();
+      renderizarMapa();
+    }
+
+    function limpiarSeleccionMultiple() {
+      celdasSeleccionadas.clear();
+      actualizarBarraSeleccion();
+      renderizarMapa();
+    }
+
+    function actualizarBarraSeleccion() {
+      const barra = document.getElementById('barraSeleccion');
+      const cantidad = celdasSeleccionadas.size;
+      document.getElementById('lblSeleccionCount').textContent =
+        cantidad === 1 ? '1 ubicación seleccionada' : `${cantidad} ubicaciones seleccionadas`;
+      barra.classList.toggle('activa', modoSeleccionMultiple && cantidad > 0);
+    }
+
+    function abrirModalSeleccionMultiple() {
+      if (celdasSeleccionadas.size === 0) {
+        mostrarToast('Selecciona al menos una ubicación en el mapa.', 'aviso');
+        return;
+      }
+      modoAsignacionMultiple = true;
+      filaSel = null;
+      colSel = null;
+
+      document.getElementById('modalTitulo').textContent = `Asignar código a ${celdasSeleccionadas.size} ubicaciones seleccionadas`;
+      document.getElementById('buscarCodigoUbicacion').value = '';
+      filtrarCodigosModal();
+      document.getElementById('inputProducto').value = '';
+      document.getElementById('inputCantidad').value = '0';
+
+      // En modo múltiple no tiene sentido mostrar la tabla de productos de UNA celda
+      document.getElementById('bloqueProductosUbicacion').style.display = 'none';
+      document.getElementById('btnGuardarItemCelda').textContent = `💾 Asignar a ${celdasSeleccionadas.size} ubicaciones`;
+      document.getElementById('modalCelda').style.display = 'flex';
+    }
+
+    function abrirModal(f, c) {
+      modoAsignacionMultiple = false;
+      document.getElementById('bloqueProductosUbicacion').style.display = '';
+      document.getElementById('btnGuardarItemCelda').textContent = '💾 Guardar Producto en Ubicación';
+      filaSel = f;
+      colSel = c;
+      const celda = datosMapa[f][c];
+      document.getElementById('modalTitulo').textContent = `Gestión de Ubicación ${celda.idUbicacion}`;
+      
+      document.getElementById('buscarCodigoUbicacion').value = '';
+      filtrarCodigosModal();
+      
+      document.getElementById('inputProducto').value = '';
+      document.getElementById('inputCantidad').value = '0';
+      
+      renderizarTablaModal();
+      document.getElementById('modalCelda').style.display = 'flex';
+    }
+
+    function renderizarTablaModal() {
+      const celda = datosMapa[filaSel][colSel];
+      const tbody = document.getElementById('tablaProductosUbicacionBody');
+      tbody.innerHTML = '';
+
+      if (celda.items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">Ubicación vacía</td></tr>`;
+        return;
+      }
+
+      celda.items.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        const esPasillo = esCodigoPasillo(item.codigoId);
+        tr.innerHTML = `
+          <td><strong>${item.codigoId}</strong></td>
+          <td>${item.producto || '-'}</td>
+          <td><strong>${item.cantidad}</strong></td>
+          <td style="text-align: center; white-space: nowrap;">
+            ${esPasillo ? '' : `<button class="btn-tab" style="padding: 4px 8px; font-size: 12px; margin-right: 4px;" onclick="abrirModalCantidad(${index})">🔢 Editar cant.</button>`}
+            ${esPasillo ? '' : `<button class="btn-warning" onclick="moverItemDeCelda(${index})" style="margin-right: 4px;">🔀 Mover</button>`}
+            <button class="btn-danger" onclick="eliminarItemDeCelda(${index})">Quitar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Aplica un código/producto/cantidad a un objeto de celda individual.
+    function aplicarItemACelda(celda, codigoId, producto, cantidad) {
+      if (esCodigoPasillo(codigoId)) {
+        celda.items = [{ codigoId: codigoId, producto: '', cantidad: 0 }];
+        return;
+      }
+      if (celda.items.length === 1 && esCodigoPasillo(celda.items[0].codigoId)) {
+        celda.items = [];
+      }
+      const itemExistente = celda.items.find(i => i.codigoId === codigoId && i.producto === producto);
+      if (itemExistente) {
+        itemExistente.cantidad += cantidad;
+      } else {
+        celda.items.push({ codigoId: codigoId, producto: producto, cantidad: cantidad });
+      }
+    }
+
+    function agregarOActualizarItemEnCelda() {
+      const codigoId = document.getElementById('selectCodigoUbicacion').value;
+      const producto = document.getElementById('inputProducto').value.trim();
+      const cantidad = parseInt(document.getElementById('inputCantidad').value) || 0;
+
+      if (!codigoId) {
+        mostrarToast('Por favor selecciona un código.', 'aviso');
+        return;
+      }
+
+      if (cantidad < 0) {
+        mostrarToast('La cantidad no puede ser negativa.', 'error');
+        return;
+      }
+
+      if (modoAsignacionMultiple) {
+        const codigoInfo = listaCodigos.find(c => c.id === codigoId);
+        celdasSeleccionadas.forEach(clave => {
+          const [f, c] = clave.split('-').map(Number);
+          aplicarItemACelda(datosMapa[f][c], codigoId, producto, cantidad);
+          registrarMovimiento('Asignación masiva', datosMapa[f][c].idUbicacion, codigoId, producto, cantidad, codigoInfo ? codigoInfo.desc : '');
+          registrarCambioInventarioPorMapa(codigoId, cantidad);
+        });
+        const cantidadCeldas = celdasSeleccionadas.size;
+        guardarEnLocalStorage();
+        limpiarSeleccionMultiple();
+        alternarModoSeleccion(false);
+        renderizarMapa();
+        actualizarInventarioSiVisible();
+        cerrarModal();
+        mostrarToast(`Código asignado a ${cantidadCeldas} ubicaciones.`, 'exito');
+        return;
+      }
+
+      if (filaSel === null || colSel === null) return;
+      const celda = datosMapa[filaSel][colSel];
+      aplicarItemACelda(celda, codigoId, producto, cantidad);
+      registrarMovimiento('Agregado', celda.idUbicacion, codigoId, producto, cantidad);
+      registrarCambioInventarioPorMapa(codigoId, cantidad);
+
+      guardarEnLocalStorage();
+      renderizarTablaModal();
+      renderizarMapa();
+      actualizarInventarioSiVisible();
+      document.getElementById('inputProducto').value = '';
+      document.getElementById('inputCantidad').value = '0';
+    }
+
+    function eliminarItemDeCelda(index) {
+      if (filaSel === null || colSel === null) return;
+      const celda = datosMapa[filaSel][colSel];
+      const item = celda.items[index];
+      if (item) {
+        registrarMovimiento('Quitado', celda.idUbicacion, item.codigoId, item.producto, item.cantidad);
+        registrarCambioInventarioPorMapa(item.codigoId, -item.cantidad);
+      }
+      celda.items.splice(index, 1);
+      guardarEnLocalStorage();
+      renderizarTablaModal();
+      renderizarMapa();
+      actualizarInventarioSiVisible();
+    }
+
+    async function moverItemDeCelda(index) {
+      if (filaSel === null || colSel === null) return;
+      const celdaOrigen = datosMapa[filaSel][colSel];
+      const item = celdaOrigen.items[index];
+      if (!item) return;
+      if (esCodigoPasillo(item.codigoId)) {
+        mostrarToast('Los pasillos no se pueden mover, solo reasignar.', 'aviso');
+        return;
+      }
+
+      const destinoTexto = await pedirTexto(
+        `¿A qué ubicación quieres mover "${item.codigoId}"${item.producto ? ' (' + item.producto + ')' : ''}?`,
+        {
+          titulo: 'Mover producto',
+          icono: '🔀',
+          placeholder: 'Ej: B3',
+          mensajeError: 'Escribe una ubicación válida dentro del almacén (Ej: B3).',
+          validar: (valor) => {
+            if (!valor) return false;
+            const coord = parsearCoordenada(valor);
+            return !!(coord && coord.f >= 0 && coord.f < totalFilas && coord.c >= 0 && coord.c < totalColumnas);
+          }
+        }
+      );
+      if (!destinoTexto) return;
+
+      const coord = parsearCoordenada(destinoTexto);
+      if (coord.f === filaSel && coord.c === colSel) {
+        mostrarToast('Elige una ubicación distinta a la actual.', 'aviso');
+        return;
+      }
+
+      const celdaDestino = datosMapa[coord.f][coord.c];
+      aplicarItemACelda(celdaDestino, item.codigoId, item.producto, item.cantidad);
+      celdaOrigen.items.splice(index, 1);
+      registrarMovimiento('Movido', celdaDestino.idUbicacion, item.codigoId, item.producto, item.cantidad, `Desde ${celdaOrigen.idUbicacion}`);
+
+      guardarEnLocalStorage();
+      renderizarTablaModal();
+      renderizarMapa();
+      mostrarToast(`Producto movido a ${celdaDestino.idUbicacion}.`, 'exito');
+    }
+
+    // Índice del item que se está editando dentro del modal de cantidad.
+    let indexItemEditandoCantidad = null;
+
+    // Abre el modal para editar la cantidad de un item ya asignado,
+    // sin necesidad de borrarlo y volver a capturar el código.
+    function abrirModalCantidad(index) {
+      if (filaSel === null || colSel === null) return;
+      const celda = datosMapa[filaSel][colSel];
+      const item = celda.items[index];
+      if (!item) return;
+
+      indexItemEditandoCantidad = index;
+      document.getElementById('mensajeCantidad').textContent =
+        `${item.codigoId}${item.producto ? ' — Lote: ' + item.producto : ''}`;
+      document.getElementById('inputConteoNuevo').value = item.cantidad;
+
+      document.getElementById('modalCantidad').style.display = 'flex';
+      setTimeout(() => {
+        const input = document.getElementById('inputConteoNuevo');
+        input.focus();
+        input.select();
+      }, 50);
+    }
+
+    function cerrarModalCantidad() {
+      indexItemEditandoCantidad = null;
+      document.getElementById('modalCantidad').style.display = 'none';
+    }
+
+    // Aplica la nueva cantidad al item, sin borrar/reingresar el código.
+    function confirmarEdicionCantidad() {
+      if (filaSel === null || colSel === null || indexItemEditandoCantidad === null) return;
+      const celda = datosMapa[filaSel][colSel];
+      const item = celda.items[indexItemEditandoCantidad];
+      if (!item) return;
+
+      const nuevaCantidad = parseInt(document.getElementById('inputConteoNuevo').value);
+      if (isNaN(nuevaCantidad) || nuevaCantidad < 0) {
+        mostrarToast('Ingresa una cantidad válida.', 'aviso');
+        return;
+      }
+
+      const cantidadAnterior = item.cantidad;
+      item.cantidad = nuevaCantidad;
+
+      registrarMovimiento('Ajuste de cantidad', celda.idUbicacion, item.codigoId, item.producto, nuevaCantidad, `De ${cantidadAnterior} a ${nuevaCantidad} pzas`);
+      registrarCambioInventarioPorMapa(item.codigoId, nuevaCantidad - cantidadAnterior);
+
+      guardarEnLocalStorage();
+      cerrarModalCantidad();
+      renderizarTablaModal();
+      renderizarMapa();
+      actualizarInventarioSiVisible();
+      mostrarToast(`Cantidad actualizada a ${nuevaCantidad} pzas.`, 'exito');
+    }
+
+    function cerrarModal() {
+      modoAsignacionMultiple = false;
+      document.getElementById('bloqueProductosUbicacion').style.display = '';
+      document.getElementById('modalCelda').style.display = 'none';
+      cerrarModalCantidad();
+    }
+
+    function exportarAExcel() {
+      asegurarLibreriaExcel().then(() => {
+        generarArchivoExcel();
+      }).catch(() => {
+        mostrarToast('No se pudo cargar el módulo de Excel. Revisa tu conexión e intenta de nuevo.', 'error');
+      });
+    }
+
+    function generarArchivoExcel() {
+      guardarLayoutActivoEnMemoria();
+      const wb = XLSX.utils.book_new();
+
+      const calcularCantidadTotalAmbosLayouts = (idCodigo) => {
+        if (esCodigoPasillo(idCodigo)) return 'N/A';
+        let total = 0;
+        [1, 2].forEach(n => {
+          const mapa = layoutsData[n].datosMapa;
+          if (!mapa) return;
+          mapa.forEach(fila => fila.forEach(celda => {
+            (celda.items || []).forEach(it => {
+              if (it.codigoId === idCodigo) total += Number(it.cantidad) || 0;
+            });
+          }));
+        });
+        return total;
+      };
+
+      const datosConsolidados = listaCodigos.map(item => ({
+        "Código / Pasillo": item.id,
+        "Descripción / Clasificación": item.desc,
+        "Cantidad Total (Layout 1 + Layout 2)": calcularCantidadTotalAmbosLayouts(item.id),
+        "Color Hex": item.color
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosConsolidados), "Consolidado");
+
+      [1, 2].forEach(n => {
+        const l = layoutsData[n];
+        const datosUbicaciones = [];
+        for (let f = 0; f < l.totalFilas; f++) {
+          for (let c = 0; c < l.totalColumnas; c++) {
+            const celda = l.datosMapa[f][c];
+            if (celda.items.length === 0) {
+              datosUbicaciones.push({
+                "Ubicación": celda.idUbicacion,
+                "Código Asignado": 'DISPONIBLE',
+                "Descripción": '',
+                "Lote": '',
+                "Cantidad": 0
+              });
+            } else {
+              celda.items.forEach(it => {
+                const config = listaCodigos.find(i => i.id === it.codigoId);
+                datosUbicaciones.push({
+                  "Ubicación": celda.idUbicacion,
+                  "Código Asignado": it.codigoId,
+                  "Descripción": config ? config.desc : '',
+                  "Lote": it.producto || 'S/L',
+                  "Cantidad": esCodigoPasillo(it.codigoId) ? 'N/A' : it.cantidad
+                });
+              });
+            }
+          }
+        }
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosUbicaciones), `Mapa - ${l.nombre}`);
+      });
+
+      XLSX.writeFile(wb, "Inventario_MultiProducto.xlsx");
+    }
+
+    function exportarRespaldoTotal() {
+      const respaldo = construirObjetoRespaldo();
+      const blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.href = url;
+      downloadAnchor.download = `respaldo_inventario_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      // Libera el objeto en memoria un momento después de disparar la descarga.
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+      localStorage.setItem('inv_ultimo_respaldo', String(Date.now()));
+      actualizarEtiquetaUltimoRespaldo();
+
+      if (navigator.share && navigator.canShare) {
+        mostrarToast('Respaldo generado. Si no aparece en Descargas, usa el botón "Compartir respaldo".', 'exito');
+      } else {
+        mostrarToast('Respaldo exportado correctamente.', 'exito');
+      }
+    }
+
+    function construirObjetoRespaldo() {
+      guardarLayoutActivoEnMemoria();
+      return {
+        version: 2,
+        codigos: listaCodigos,
+        layouts: layoutsData,
+        layoutActivo: layoutActivo,
+        inventarioDatos: inventarioDatos
+      };
+    }
+
+    async function compartirRespaldoTotal() {
+      const respaldo = construirObjetoRespaldo();
+      const nombreArchivo = `respaldo_inventario_${new Date().toISOString().slice(0,10)}.json`;
+      const archivo = new File([JSON.stringify(respaldo, null, 2)], nombreArchivo, { type: 'application/json' });
+
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+          await navigator.share({
+            files: [archivo],
+            title: 'Respaldo de inventario',
+            text: 'Respaldo del sistema de inventario.'
+          });
+          localStorage.setItem('inv_ultimo_respaldo', String(Date.now()));
+          actualizarEtiquetaUltimoRespaldo();
+          mostrarToast('Respaldo compartido correctamente.', 'exito');
+        } else {
+          mostrarToast('Tu navegador no soporta compartir archivos. Usa "Respaldo Total".', 'aviso');
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          mostrarToast('No se pudo compartir el respaldo.', 'error');
+        }
+      }
+    }
+
+    async function intentarCargarRespaldo() {
+      const passwordOk = await pedirPassword("Ingresa la contraseña para cargar respaldo:");
+      if (!passwordOk) return;
+      document.getElementById('inputRespaldoJson').click();
+    }
+
+    function importarRespaldoTotal(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const respaldo = JSON.parse(e.target.result);
+
+          if (respaldo.codigos && respaldo.layouts) {
+            // Formato nuevo (2 layouts).
+            listaCodigos = respaldo.codigos;
+            layoutsData = respaldo.layouts;
+            layoutActivo = (respaldo.layoutActivo === 1 || respaldo.layoutActivo === 2) ? respaldo.layoutActivo : 1;
+            inventarioDatos = respaldo.inventarioDatos || {};
+            cargarLayoutActivoDesdeMemoria();
+
+            document.querySelectorAll('.btn-layout').forEach(btn => btn.classList.remove('active'));
+            const btnActivo = document.getElementById(`btnLayout${layoutActivo}`);
+            if (btnActivo) btnActivo.classList.add('active');
+
+            guardarEnLocalStorage();
+            renderizarListaCodigos();
+            renderizarTablaInventario();
+            actualizarSelectFilasZona();
+            actualizarSelectoresEstructura();
+            renderizarMapa();
+            actualizarBadgesLayout();
+
+            mostrarToast('¡Respaldo cargado con éxito!', 'exito');
+          } else if (respaldo.codigos && respaldo.mapa !== undefined) {
+            // Formato anterior (un solo mapa) — se carga como Layout 1 y se
+            // deja el Layout 2 vacío.
+            listaCodigos = respaldo.codigos;
+            layoutActivo = 1;
+            layoutsData = {
+              1: {
+                nombre: 'Layout 1',
+                totalFilas: respaldo.filas,
+                totalColumnas: respaldo.columnas,
+                datosMapa: respaldo.mapa,
+                etiquetasFilas: respaldo.etiquetasFilas || {},
+                historialMovimientos: respaldo.historialMovimientos || []
+              },
+              2: { nombre: 'Layout 2', totalFilas: 3, totalColumnas: 4, datosMapa: [], etiquetasFilas: {}, historialMovimientos: [] }
+            };
+            inventarioDatos = respaldo.inventarioDatos || {};
+            cargarLayoutActivoDesdeMemoria();
+
+            document.querySelectorAll('.btn-layout').forEach(btn => btn.classList.remove('active'));
+            const btnActivo = document.getElementById('btnLayout1');
+            if (btnActivo) btnActivo.classList.add('active');
+
+            guardarEnLocalStorage();
+            renderizarListaCodigos();
+            renderizarTablaInventario();
+            actualizarSelectFilasZona();
+            actualizarSelectoresEstructura();
+            renderizarMapa();
+            actualizarBadgesLayout();
+
+            mostrarToast('¡Respaldo cargado con éxito! (formato anterior, cargado en Layout 1)', 'exito');
+          } else {
+            mostrarToast('El archivo no tiene un formato de respaldo reconocido.', 'error');
+          }
+        } catch (error) {
+          mostrarToast('Error al leer el archivo JSON.', 'error');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    aplicarTemaGuardado();
+    cargarDesdeLocalStorage();
+    renderizarMapa();
+    renderizarTablaInventario();
+    actualizarBadgesLayout();
+    actualizarEtiquetaUltimoRespaldo();
+    verificarRecordatorioRespaldo();
+    inicializarPinchZoomMapa();
+    inicializarAcordeonDesplegables();
+
+    // En celulares que soportan compartir archivos, mostramos el botón alterno,
+    // útil cuando la descarga normal no llega a la carpeta de Descargas (modo acceso directo).
+    if (navigator.share && navigator.canShare) {
+      const btnCompartir = document.getElementById('btnCompartirRespaldo');
+      if (btnCompartir) btnCompartir.style.display = '';
+    }
+  </script>
+</body>
+</html>
